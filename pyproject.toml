@@ -65,6 +65,9 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# CI 里用 `pytest` 控制台脚本入口（不经过 `python -m`），根目录不在 sys.path；
+# 显式声明 pythonpath，保证 config/intents 等顶层模块可导入。
+pythonpath = ["."]
 addopts = "-q"
 markers = [
     "audio: 需要 Windows 音频/COM 依赖的用例；无桌面环境时用 `-m 'not audio'` 跳过",
