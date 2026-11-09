@@ -39,7 +39,7 @@ def normalize(text: str) -> str:
     return text.lower()
 
 
-def cn2int(s: str):
+def cn2int(s: str) -> int | None:
     """把“五十”“十五”“一百”这类转成整数；也接受阿拉伯数字；无法解析返回 None。"""
     s = s.strip()
     if not s:
