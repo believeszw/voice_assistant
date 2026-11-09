@@ -5,12 +5,13 @@
 
 ## 演示视频
 
-[▶ 点击播放 57 秒演示视频](docs/media/demo.mp4)
+[▶ 点击播放 57 秒演示视频](https://media.githubusercontent.com/media/believeszw/voice_assistant/main/docs/media/demo.mp4)
 
-[![语音助手演示](docs/media/demo-poster.jpg)](docs/media/demo.mp4)
+[![语音助手演示](docs/media/demo-poster.jpg)](https://media.githubusercontent.com/media/believeszw/voice_assistant/main/docs/media/demo.mp4)
 
 一次完整演示：唤醒 → 问时间 → 一句话多指令（打开记事本 + 调音量）→ 播报中插话打断 → 浏览器搜索 / LLM 闲聊。
-视频为 **1920×802 原始录屏（13.8 MB，未二次压缩）**，终端里的每行日志都清晰可读；GitHub 网页内可直接播放。
+视频为 **1920×802 原始录屏（13.8 MB，未二次压缩）**，终端里的每行日志都清晰可读。
+视频文件 `docs/media/demo.mp4` 由 **Git LFS** 托管：clone 后如果看到的是 LFS 指针文本，执行 `git lfs install && git lfs pull` 拉取视频。
 
 ```
 麦克风 ──► 前端（AEC 去回声 + Silero VAD）──► 识别（端侧双遍 → 云端兜底 → Vosk 最后兜底）
