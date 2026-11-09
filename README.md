@@ -175,6 +175,28 @@ python tools/test_frontend.py    # 离线双讲验收（ERLE / hit / fp / 打断
 python tools/test_tts_local.py   # 断网时 SAPI 渲染 wav 播放（可暂停）
 ```
 
+### 强回声 / 混响场景（`tools/test_aec_echo.py`）
+
+上面的 38.2 dB 是「单延迟线性回声」的理想场景。真实房间有混响、扬声器非线性、双讲，补一组实验：
+
+| 场景 | 回声/近端 | ERLE |
+| --- | --- | --- |
+| S0 单延迟线性回声（80 ms × 0.35） | −9.1 dB | 38.1 dB |
+| S1 混响 RT60 = 0.3 s | −9.5 dB | 13.4 dB |
+| S2 混响 RT60 = 0.6 s | −8.9 dB | 17.6 dB |
+| S3 扬声器非线性 tanh(drive=6) | −9.8 dB | 37.4 dB |
+| S4 混响 + 非线性 | −9.3 dB | 21.8 dB |
+| S5 混响 + 非线性 + 双讲 | −9.3 dB | 14.3 dB |
+| R 真实默认输出（16 kHz 播放） | −20.5 dB | 8.0 dB |
+| R 真实默认输出（44.1 kHz 播放） | −20.7 dB | 7.8 dB |
+
+结论：混响把 AEC3 从 38 dB 打到 13–18 dB；扬声器非线性影响不大；双讲再降 5–7 dB。真实设备上只有约 8 dB（早期不同参数下曾测到 21 dB，重复性一般，取决于音量/采样率/回声路径）。这是「真机强回声」目前最弱的一环，量产要换更强的回声参考（AEC 硬件/DSP）或重新做声学结构。
+
+```bash
+python tools/test_aec_echo.py          # 合成场景：线性 / 混响 / 非线性 / 双讲
+python tools/test_aec_echo.py --real   # 追加真实声学：播放 + 麦克风录音，互相关对齐后算 ERLE
+```
+
 ### SAPI 播放现在可暂停
 
 本地兜底不再直接 `SAPI.Speak`：先用 `SpFileStream` 渲染成 wav（`_sapi_render_wav`）再走可暂停的 `_play_wav`。因此断网 / 云端失败时也能暂停、继续、推 AEC 参考与缓存。
