@@ -75,6 +75,7 @@ tools\run_regress.bat                  # 本机声学/端到端回归（AEC、�
 ```
 
 - 设计说明、重构记录与已知差距见 [docs/代码审查报告.md](docs/代码审查报告.md)。
+- CI 配置在 [.github/workflows/ci.yml](.github/workflows/ci.yml)：push / PR 时跑 `ruff check .`、`ruff format --check .`、`pytest -m "not audio"`。
 - 指令解析是**规则表驱动**（`intents.py` 的 `RULES` 按顺序命中）：新增说法时，
   同时补 `tests/test_intents.py` 的 golden 用例，保证旧说法不回归。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - 测试分层：`tests/` 里是不依赖声卡的逻辑用例；`tools/` 下是验收/诊断脚本（不进 CI，也
