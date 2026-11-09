@@ -46,6 +46,7 @@ def _make_aec():
                 raise
     return _FlmsAEC()
 
+
 try:  # onnxruntime 是软依赖：没有就用能量 VAD 兜底
     import onnxruntime as ort
 except Exception:  # pragma: no cover

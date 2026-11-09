@@ -16,7 +16,6 @@
 import argparse
 import ctypes
 import datetime
-import os
 import re
 import sys
 import time
@@ -33,7 +32,7 @@ import nlu_local
 from config import (CLOUD_ASR, CLOUD_ENABLED, CLOUD_LLM, CLOUD_TTS,
                     COMMAND_MAX_SECONDS, COMMAND_SILENCE_SECONDS, DANGEROUS,
                     FOLLOWUP_START_TIMEOUT, SAMPLE_RATE, SESSION_MAX_TURNS,
-                    TTS_VOICE, WAKE_ACK, WAKE_WORDS, WAKE_WORDS_FUZZY)
+                    WAKE_ACK, WAKE_WORDS, WAKE_WORDS_FUZZY)
 from frontend import AudioFrontend, enhance_pcm
 from hotkey import Hotkeys
 from intents import cn2int, parse
@@ -132,6 +131,7 @@ def split_compound(text: str):
         if p:
             parts.append(p)
     return parts if len(parts) > 1 else []
+
 
 HELP = (
     "我能做这些事：打开或关闭应用，比如打开记事本、关闭计算器；"
@@ -445,7 +445,8 @@ class Assistant:
             if intent:
                 stats = nlu_local.last_stats()
                 self.log(f"[NLU] 端侧 {stats.get('mode', '')} {stats.get('ms', 0):.0f} ms "
-                         f"prompt={stats.get('prompt_tokens')} gen={stats.get('completion_tokens')}")
+                         f"prompt={stats.get('prompt_tokens')} "
+                         f"gen={stats.get('completion_tokens')}")
                 return intent
         return None
 
@@ -507,68 +508,68 @@ class Assistant:
         name = intent.get("name", "")
 
         if action == "open_app":
-            ok, msg = actions.open_app(name)
+            msg = actions.open_app(name)[1]
         elif action == "close_app":
-            ok, msg = actions.close_app(name)
+            msg = actions.close_app(name)[1]
         elif action == "volume_up":
-            ok, msg = actions.volume_step(+5)
+            msg = actions.volume_step(+5)[1]
         elif action == "volume_down":
-            ok, msg = actions.volume_step(-5)
+            msg = actions.volume_step(-5)[1]
         elif action == "volume_set":
-            ok, msg = actions.set_volume(intent["value"])
+            msg = actions.set_volume(intent["value"])[1]
         elif action == "volume_max":
-            ok, msg = actions.volume_max()
+            msg = actions.volume_max()[1]
         elif action == "volume_get":
             cur = actions.get_volume()
-            ok, msg = True, (f"当前音量 {cur}%" if cur is not None else "音量未知")
+            msg = f"当前音量 {cur}%" if cur is not None else "音量未知"
         elif action == "mute":
-            ok, msg = actions.mute(True)
+            msg = actions.mute(True)[1]
         elif action == "unmute":
-            ok, msg = actions.mute(False)
+            msg = actions.mute(False)[1]
         elif action == "media_play_pause":
-            ok, msg = actions.media_play_pause()
+            msg = actions.media_play_pause()[1]
         elif action == "media_next":
-            ok, msg = actions.media_next()
+            msg = actions.media_next()[1]
         elif action == "media_prev":
-            ok, msg = actions.media_prev()
+            msg = actions.media_prev()[1]
         elif action == "screenshot":
-            ok, msg = actions.screenshot()
+            msg = actions.screenshot()[1]
         elif action == "lock":
-            ok, msg = actions.lock_screen()
+            msg = actions.lock_screen()[1]
         elif action == "sleep":
-            ok, msg = actions.sleep_pc()
+            msg = actions.sleep_pc()[1]
         elif action == "shutdown":
-            ok, msg = actions.shutdown_pc(20)
+            msg = actions.shutdown_pc(20)[1]
         elif action == "restart":
-            ok, msg = actions.restart_pc(20)
+            msg = actions.restart_pc(20)[1]
         elif action == "cancel_shutdown":
-            ok, msg = actions.cancel_shutdown()
+            msg = actions.cancel_shutdown()[1]
         elif action == "search":
-            ok, msg = actions.search_web(intent["term"], intent.get("browser", ""))
+            msg = actions.search_web(intent["term"], intent.get("browser", ""))[1]
         elif action == "open_url":
-            ok, msg = actions.open_url(intent["url"], intent.get("browser", ""))
+            msg = actions.open_url(intent["url"], intent.get("browser", ""))[1]
         elif action == "time":
-            ok, msg = actions.tell_time()
+            msg = actions.tell_time()[1]
         elif action == "date":
-            ok, msg = actions.tell_date()
+            msg = actions.tell_date()[1]
         elif action == "system_info":
-            ok, msg = actions.system_info()
+            msg = actions.system_info()[1]
         elif action == "copy_text":
-            ok, msg = actions.copy_text(intent["text"])
+            msg = actions.copy_text(intent["text"])[1]
         elif action == "read_clipboard":
-            ok, msg = actions.read_clipboard()
+            msg = actions.read_clipboard()[1]
         elif action == "type_text":
-            ok, msg = actions.type_text(intent["text"])
+            msg = actions.type_text(intent["text"])[1]
         elif action == "show_desktop":
-            ok, msg = actions.show_desktop()
+            msg = actions.show_desktop()[1]
         elif action == "open_folder":
-            ok, msg = actions.open_folder(intent["name"])
+            msg = actions.open_folder(intent["name"])[1]
         elif action == "open_item":
-            ok, msg = actions.open_item(intent["folder"], intent["name"])
+            msg = actions.open_item(intent["folder"], intent["name"])[1]
         elif action == "brightness":
-            ok, msg = actions.brightness(intent["delta"])
+            msg = actions.brightness(intent["delta"])[1]
         else:
-            ok, msg = False, f"暂不支持：{action}"
+            msg = f"暂不支持：{action}"
         return msg, False
 
     def _confirm(self, question: str) -> bool:
@@ -842,10 +843,18 @@ def main():
         use_hotkey=not args.no_hotkey,
         use_wake=not args.no_wake,
     )
-    if args.text:
-        assistant.run_text()
-    else:
-        assistant.run_voice()
+    try:
+        if args.text:
+            assistant.run_text()
+        else:
+            assistant.run_voice()
+    except KeyboardInterrupt:
+        print("\n[助手] 已退出。")
+    finally:
+        try:
+            assistant.speaker.shutdown()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

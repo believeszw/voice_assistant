@@ -1,7 +1,8 @@
 """小米 MiMo 云端能力：语音识别（ASR）、语音合成（TTS）、意图理解与闲聊。
 
 MiMo 的 ASR/TTS 走的是 chat/completions 方言：
-- ASR：messages[0].content = [{"type": "input_audio", "input_audio": {"data": "data:audio/wav;base64,..."}}]
+- ASR：messages[0].content = [{"type": "input_audio",
+       "input_audio": {"data": "data:audio/wav;base64,..."}}]
 - TTS：messages = [user 风格指令, assistant 待读文本]，audio={"voice": ..., "format": "wav"}
          响应 choices[0].message.audio.data 是 base64 的 wav
 

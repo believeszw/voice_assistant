@@ -1,7 +1,6 @@
 """麦克风采集与简单的能量 VAD。"""
 
 import queue
-import time
 
 import numpy as np
 import sounddevice as sd

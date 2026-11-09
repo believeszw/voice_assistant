@@ -175,7 +175,9 @@ def _verify_open(exe: str, before: set, timeout: float = 2.5) -> bool:
             _last_verify.update(fg=exe_l, visible=True, new_pids=len(_running_pids(exe) - before))
             return True
         if _has_visible_window(exe):
-            _last_verify.update(fg=_foreground_exe(), visible=True, new_pids=len(_running_pids(exe) - before))
+            _last_verify.update(
+                fg=_foreground_exe(), visible=True,
+                new_pids=len(_running_pids(exe) - before))
             return True
         time.sleep(0.15)
     _last_verify.update(fg=_foreground_exe(), visible=_has_visible_window(exe),
@@ -294,7 +296,8 @@ def open_app(name: str):
             return True, f"已打开 {name}"
     try:
         subprocess.Popen(["cmd", "/c", "start", "", target], shell=False,
-                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                         stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except OSError as exc:
         return False, f"没能打开 {name}：{exc}"
     if _verify_open(exe, before):
@@ -315,7 +318,8 @@ def open_app(name: str):
     if before and _bring_to_front(exe):
         if _verify_open(exe, before, timeout=1.0):
             return True, f"已打开 {name}"
-    diag = f"新进程 {_last_verify.get('new_pids')}，可见窗口 {_last_verify.get('visible')}，前台 {_last_verify.get('fg')}"
+    diag = (f"新进程 {_last_verify.get('new_pids')}，"
+            f"可见窗口 {_last_verify.get('visible')}，前台 {_last_verify.get('fg')}")
     if before:
         return False, f"{name} 已在运行，但没能切到前台（{diag}）"
     return False, f"没能打开 {name}（{diag}）"

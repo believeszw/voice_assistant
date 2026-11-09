@@ -28,16 +28,18 @@ class TwoPassASR:
         self.log = log
         self.ok = False
         self.err = ""
-        self.models_dir = Path(models_dir) if models_dir else Path(__file__).resolve().parent / "models"
+        if models_dir:
+            self.models_dir = Path(models_dir)
+        else:
+            self.models_dir = Path(__file__).resolve().parent / "models"
         self._stream_rec = None
         self._sv_rec = None
         self._stream = None
         self._partial = ""
         self._pcm = bytearray()
-        try:
-            import sherpa_onnx  # noqa: F401
-        except Exception as e:  # pragma: no cover
-            self.err = f"sherpa_onnx 未安装: {e}"
+        import importlib.util
+        if importlib.util.find_spec("sherpa_onnx") is None:  # pragma: no cover
+            self.err = "sherpa_onnx 未安装"
             return
         try:
             self._init_stream()
@@ -175,7 +177,11 @@ class TwoPassASR:
             return (stream, "paraformer-stream") if st_c else ("", "none")
         if not st_c:
             return sv, "sensevoice"
-        cjk = lambda s: sum("\u4e00" <= ch <= "\u9fff" for ch in s)
+
+        def _cjk(s: str) -> int:
+            return sum("\u4e00" <= ch <= "\u9fff" for ch in s)
+
+        cjk = _cjk
         # 1) 整句结果没有任何中文、流式有：多半是脑补
         if cjk(sv_c) == 0 and cjk(st_c) >= 2:
             return stream, "paraformer-stream"

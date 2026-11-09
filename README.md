@@ -529,6 +529,7 @@ C:\\va-venv\\Scripts\\python.exe tools\demo_e2e.py
 - `docs/语音助手_测试用例.docx` / `.pdf`：同一份内容的 Word / PDF 版，可直接发送或用飞书导入。
 - 重新生成：`python tools/build_test_doc.py`（改完用例数据后执行；docx 由 DSH python 的 python-docx 生成）。
 - `docs/语音助手_演示脚本.docx` / `.pdf`：演示脚本版（顺序/你说/展示点/通过标准 7 步 + 打断专项），适合面试/评审照着念。
+- `docs/代码审查报告.md`：代码质量与风格审查（分层评价、P1–P3 问题清单、修复记录与后续重构路线）。
 
 ## 已知限制：单麦听不出「谁在说话」
 

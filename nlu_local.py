@@ -88,10 +88,16 @@ def _tool_defs():
 
     tools = [fn(a, f"执行 {a}") for a in no_args]
     tools += [
-        fn("open_app", "打开应用", {"name": {"type": "string", "description": "应用名，如 记事本/浏览器/微信"}}, ["name"]),
+        fn("open_app", "打开应用",
+           {"name": {"type": "string", "description": "应用名，如 记事本/浏览器/微信"}},
+           ["name"]),
         fn("close_app", "关闭应用", {"name": {"type": "string", "description": "应用名"}}, ["name"]),
-        fn("open_folder", "打开文件夹", {"name": {"type": "string", "description": "文件夹名，如 下载/文档/桌面"}}, ["name"]),
-        fn("volume_set", "把音量设成指定值", {"value": {"type": "integer", "minimum": 0, "maximum": 100}}, ["value"]),
+        fn("open_folder", "打开文件夹",
+           {"name": {"type": "string", "description": "文件夹名，如 下载/文档/桌面"}},
+           ["name"]),
+        fn("volume_set", "把音量设成指定值",
+           {"value": {"type": "integer", "minimum": 0, "maximum": 100}},
+           ["value"]),
         fn("search", "用浏览器搜索", {"term": {"type": "string", "description": "搜索词"}}, ["term"]),
         fn("open_url", "打开网址", {"url": {"type": "string", "description": "网址"}}, ["url"]),
         fn("copy_text", "复制文字到剪贴板", {"text": {"type": "string"}}, ["text"]),

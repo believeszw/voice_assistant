@@ -38,6 +38,7 @@ def _quick_wav():
             _QUICK_WAV = None
     return _QUICK_WAV
 
+
 try:
     import pythoncom
     import win32com.client
@@ -56,6 +57,7 @@ SVSF_PURGE = 2
 
 _CACHE = {}
 _CACHE_ORDER = []
+_CACHE_LOCK = threading.Lock()
 
 
 def _tmp_wav(tag: str) -> str:
@@ -151,11 +153,12 @@ def _sapi_render_wav(text: str, voice) -> bytes:
 
 
 def _remember(text: str, wav: bytes):
-    _CACHE[text] = wav
-    _CACHE_ORDER.append(text)
-    while len(_CACHE_ORDER) > 80:
-        old = _CACHE_ORDER.pop(0)
-        _CACHE.pop(old, None)
+    with _CACHE_LOCK:
+        _CACHE[text] = wav
+        _CACHE_ORDER.append(text)
+        while len(_CACHE_ORDER) > 80:
+            old = _CACHE_ORDER.pop(0)
+            _CACHE.pop(old, None)
 
 
 def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
@@ -410,7 +413,8 @@ class Speaker:
         print(f"[助手] {text}")
         done = threading.Event()
         self._q.put((text, done, "normal"))
-        done.wait()
+        if not done.wait(timeout=180):  # 防 worker 异常导致永久阻塞
+            print("[TTS] 朗读超时（180s），跳过")
 
     def say_quick(self, text: str):
         """低延迟短句（唤醒回应「我在」）：优先播预生成音频，没有再退本地 SAPI。"""

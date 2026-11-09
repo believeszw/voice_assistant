@@ -183,7 +183,8 @@ def parse(text: str):
         return {"action": "copy_text", "text": _strip_polite(raw)[2:].strip(), "raw": raw}
     if any(t.startswith(w) for w in ("输入", "打字", "键入", "写")):
         keyword = next(w for w in ("输入", "打字", "键入", "写") if t.startswith(w))
-        return {"action": "type_text", "text": _strip_polite(raw)[len(keyword):].strip(), "raw": raw}
+        return {"action": "type_text",
+                "text": _strip_polite(raw)[len(keyword):].strip(), "raw": raw}
 
     # --- 文件夹里的具体文件：「打开桌面的新建文本」 ---
     m = re.match(r"^(?:打开|开)?(桌面|下载|文档|图片|音乐|视频)(?:上|里|中)?的?(.+)$", t)
