@@ -1,0 +1,6 @@
+dev 3: peak 0.071 lag 4989 (311.8 ms) near_rms 0.0025
+dev 15: peak 0.023 lag 22169 (1385.6 ms) near_rms 0.0000
+dev 2: peak 0.097 lag 5004 (312.8 ms) near_rms 0.0024
+dev 6: peak 0.024 lag 16658 (1041.1 ms) near_rms 0.0007
+dev 16: peak 0.039 lag 19599 (1224.9 ms) near_rms 0.0021
+dev 8: peak 0.030 lag 13639 (852.4 ms) near_rms 0.0007

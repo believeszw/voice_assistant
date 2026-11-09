@@ -1,0 +1,79 @@
+Timeout (0:00:06)!
+Thread 0x000086e4 (most recent call first):
+  <no Python frame>
+
+Thread 0x000062d4 (most recent call first):
+  File "C:\va-venv\Lib\site-packages\sounddevice.py", line 1317 in _raw_write
+  File "C:\va-venv\Lib\site-packages\sounddevice.py", line 1583 in write
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tts.py", line 218 in _play_wav
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tts.py", line 317 in _speak_cloud
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tts.py", line 288 in _worker
+  File "C:\Program Files\Python311\Lib\threading.py", line 982 in run
+  File "C:\Program Files\Python311\Lib\threading.py", line 1045 in _bootstrap_inner
+  File "C:\Program Files\Python311\Lib\threading.py", line 1002 in _bootstrap
+
+Thread 0x00004c18 (most recent call first):
+  File "C:\Program Files\Python311\Lib\threading.py", line 331 in wait
+  File "C:\Program Files\Python311\Lib\queue.py", line 180 in get
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\audio.py", line 74 in read
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 176 in say
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 548 in run_voice
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 758 in main
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tools\probe_stack.py", line 13 in <module>
+Timeout (0:00:06)!
+Thread 0x000086e4 (most recent call first):
+  <no Python frame>
+
+Thread 0x000062d4 (most recent call first):
+  File "C:\Program Files\Python311\Lib\threading.py", line 327 in wait
+  File "C:\Program Files\Python311\Lib\queue.py", line 171 in get
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tts.py", line 276 in _worker
+  File "C:\Program Files\Python311\Lib\threading.py", line 982 in run
+  File "C:\Program Files\Python311\Lib\threading.py", line 1045 in _bootstrap_inner
+  File "C:\Program Files\Python311\Lib\threading.py", line 1002 in _bootstrap
+
+Thread 0x00004c18 (most recent call first):
+  File "C:\Program Files\Python311\Lib\threading.py", line 331 in wait
+  File "C:\Program Files\Python311\Lib\queue.py", line 180 in get
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\audio.py", line 74 in read
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 565 in run_voice
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 758 in main
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tools\probe_stack.py", line 13 in <module>
+Timeout (0:00:06)!
+Thread 0x000086e4 (most recent call first):
+  <no Python frame>
+
+Thread 0x000062d4 (most recent call first):
+  File "C:\Program Files\Python311\Lib\threading.py", line 327 in wait
+  File "C:\Program Files\Python311\Lib\queue.py", line 171 in get
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tts.py", line 276 in _worker
+  File "C:\Program Files\Python311\Lib\threading.py", line 982 in run
+  File "C:\Program Files\Python311\Lib\threading.py", line 1045 in _bootstrap_inner
+  File "C:\Program Files\Python311\Lib\threading.py", line 1002 in _bootstrap
+
+Thread 0x00004c18 (most recent call first):
+  File "C:\Program Files\Python311\Lib\threading.py", line 331 in wait
+  File "C:\Program Files\Python311\Lib\queue.py", line 180 in get
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\audio.py", line 74 in read
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 565 in run_voice
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 758 in main
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tools\probe_stack.py", line 13 in <module>
+Timeout (0:00:06)!
+Thread 0x000086e4 (most recent call first):
+  <no Python frame>
+
+Thread 0x000062d4 (most recent call first):
+  File "C:\Program Files\Python311\Lib\threading.py", line 327 in wait
+  File "C:\Program Files\Python311\Lib\queue.py", line 171 in get
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tts.py", line 276 in _worker
+  File "C:\Program Files\Python311\Lib\threading.py", line 982 in run
+  File "C:\Program Files\Python311\Lib\threading.py", line 1045 in _bootstrap_inner
+  File "C:\Program Files\Python311\Lib\threading.py", line 1002 in _bootstrap
+
+Thread 0x00004c18 (most recent call first):
+  File "C:\Program Files\Python311\Lib\threading.py", line 331 in wait
+  File "C:\Program Files\Python311\Lib\queue.py", line 180 in get
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\audio.py", line 74 in read
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 565 in run_voice
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\assistant.py", line 758 in main
+  File "C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tools\probe_stack.py", line 13 in <module>

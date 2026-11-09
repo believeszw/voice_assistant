@@ -1,0 +1,5 @@
+输出设备: 3 E3500 (NVIDIA High Definition A
+合成 TTS ...
+助手 8.2s，用户 2.1s，用户从 +1.2s 近场注入
+首帧打断：麦克风 1.39s，相对用户开口 +0.09s，erle=0.0dB prob=0.18
+PASS

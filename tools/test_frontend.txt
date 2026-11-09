@@ -1,0 +1,15 @@
+=== AEC 开 ===
+erle    : 21.630
+hit     : 0.944
+fp      : 0.000
+latency : 0.150
+prog    : 0.355
+eprog   : 0.135
+=== AEC 关（对照）===
+erle    : -0.023
+hit     : 0.722
+fp      : 0.442
+latency : 0.150
+prog    : 0.550
+eprog   : 0.480
+PASS

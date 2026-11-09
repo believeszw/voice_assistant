@@ -1,0 +1,37 @@
+# ---- 本机环境 / 大文件（不入库）----
+.venv/
+.venv311/
+venv/
+models/
+tools/llama/
+tools/_llama.zip
+tools/wap2_src/
+tools/_wap*.zip
+tools/*.npz
+__pycache__/
+*.py[cod]
+pip-build-env-*/
+pip-build-tracker-*/
+pip-ephem-wheel-cache-*/
+pip-install-*/
+pip-unpack-*/
+*.egg-info/
+build/
+dist/
+
+# ---- 运行/调试产物 ----
+.tts_tmp/
+screenshots/
+*.bak
+*.part
+*.out
+*.log
+tools/repro*.txt
+tools/dbg*.txt
+tools/build_*.txt
+tools/msvc_check.txt
+e2e_out.txt
+
+# ---- 音频素材：默认不入库（首次运行/测试会自动生成）----
+*.wav
+!assets/wake_ack.wav

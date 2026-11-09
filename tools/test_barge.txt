@@ -1,0 +1,6 @@
+18:50:41 [状态] IDLE -> SPEAKING
+18:50:43 [打断] 用户插话，停止播报
+18:50:43 [状态] SPEAKING -> INTERRUPTED
+播报时长: 2.00s  (speaker.stopped=True)
+state=INTERRUPTED interrupted=True
+PASS

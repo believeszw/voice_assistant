@@ -1,0 +1,16 @@
+演示回放结果（真实扬声器 → 麦克风 → assistant 子进程）
+
+PASS  启动
+PASS  0_唤醒
+PASS  1_唤醒+时间
+PASS  2a_音量30
+PASS  2b_音量80
+PASS  3_复合指令
+PASS  3b_复合音量
+PASS  4_打断
+PASS  4b_接住下一句
+PASS  7_闲聊
+PASS  退出
+
+11/11 项通过
+助手日志：C:\Users\Administrator\Documents\deepseek-harness\default-workspace\voice_assistant\tools\demo_e2e_assistant.log
