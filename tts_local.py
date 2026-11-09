@@ -32,6 +32,9 @@ from pathlib import Path
 import numpy as np
 
 import config
+from logging_utils import get_logger
+
+_logger = get_logger("voice_assistant.tts_local")
 
 try:  # Piper 首选后端
     from piper import PiperVoice, SynthesisConfig
@@ -124,10 +127,10 @@ def _load():
                 _SR = sr
                 _BACKEND = model.stem
                 _LOAD_MS = (time.time() - t0) * 1000.0
-                print(f"[TTS] 端侧模型已加载（{_LOAD_MS / 1000:.2f}s，Piper {_BACKEND} {_SR}Hz）")
+                _logger.info(f"[TTS] 端侧模型已加载（{_LOAD_MS / 1000:.2f}s，Piper {_BACKEND} {_SR}Hz）")
                 return _BACKEND, _VOICE
             except Exception as exc:  # pragma: no cover
-                print(f"[TTS] Piper 加载失败，改用 sherpa：{type(exc).__name__}: {str(exc)[:120]}")
+                _logger.warning(f"[TTS] Piper 加载失败，改用 sherpa：{type(exc).__name__}: {str(exc)[:120]}")
 
         model = _sherpa_model()
         if model is not None and _HAS_SHERPA:
@@ -155,7 +158,7 @@ def _load():
                 _SR = int(_TTS.sample_rate or 16000)
                 _BACKEND = "vits-melo-tts-zh_en"
                 _LOAD_MS = (time.time() - t0) * 1000.0
-                print(f"[TTS] 端侧模型已加载（{_LOAD_MS / 1000:.2f}s，sherpa {_BACKEND} {_SR}Hz）")
+                _logger.info(f"[TTS] 端侧模型已加载（{_LOAD_MS / 1000:.2f}s，sherpa {_BACKEND} {_SR}Hz）")
                 return _BACKEND, _TTS
             except Exception as exc:  # pragma: no cover
                 _ERR = f"sherpa 加载失败 {type(exc).__name__}: {str(exc)[:160]}"
@@ -165,7 +168,7 @@ def _load():
         elif not _HAS_PIPER and not _HAS_SHERPA:
             _ERR = "piper-tts 与 sherpa-onnx 均不可用"
         if _ERR:
-            print("[TTS] 端侧模型加载失败:", _ERR)
+            _logger.warning("[TTS] 端侧模型加载失败:", _ERR)
         return "", None
 
 
@@ -219,7 +222,7 @@ def synth_wav(text: str, speed: float = None) -> bytes:
         return buf.getvalue()
     except Exception as exc:  # pragma: no cover
         _LAST.update(backend=_BACKEND, error=f"{type(exc).__name__}: {str(exc)[:120]}")
-        print("[TTS] 端侧合成失败:", _LAST["error"])
+        _logger.warning("[TTS] 端侧合成失败:", _LAST["error"])
         return b""
 
 

@@ -4,6 +4,10 @@ import ctypes
 import ctypes.wintypes
 import threading
 
+from logging_utils import get_logger
+
+_logger = get_logger("voice_assistant.hotkey")
+
 user32 = ctypes.windll.user32
 
 MOD_ALT = 0x0001
@@ -34,9 +38,9 @@ class Hotkeys:
             ok2 = user32.RegisterHotKey(None, 2, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_X)
             self._ok = bool(ok1 and ok2)
             if not self._ok:
-                print("[热键] 注册失败（可能被其他程序占用），可用文字模式或唤醒词")
+                _logger.warning("[热键] 注册失败（可能被其他程序占用），可用文字模式或唤醒词")
                 return
-            print("[热键] Ctrl+Alt+Space 唤醒 / Ctrl+Alt+X 停止朗读")
+            _logger.info("[热键] Ctrl+Alt+Space 唤醒 / Ctrl+Alt+X 停止朗读")
             msg = ctypes.wintypes.MSG()
             while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
                 if msg.message == WM_HOTKEY:
@@ -45,7 +49,7 @@ class Hotkeys:
                     elif msg.wParam == 2:
                         self.stop.set()
         except Exception as exc:  # pragma: no cover
-            print("[热键] 异常:", exc)
+            _logger.warning("[热键] 异常:", exc)
 
     def stop_listening(self):
         user32.UnregisterHotKey(None, 1)

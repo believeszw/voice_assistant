@@ -29,6 +29,9 @@ import requests
 
 import config
 from llm import ACTIONS
+from logging_utils import get_logger
+
+_logger = get_logger("voice_assistant.nlu_local")
 
 _PORT = int(config.NLU_LOCAL_PORT)
 _BASE = f"http://127.0.0.1:{_PORT}"
@@ -169,20 +172,20 @@ def _ensure_server() -> bool:
             _started_at = t0
         except Exception as exc:  # pragma: no cover
             _ERR = f"启动失败 {type(exc).__name__}: {str(exc)[:120]}"
-            print("[NLU] 端侧服务启动失败:", _ERR)
+            _logger.warning("[NLU] 端侧服务启动失败:", _ERR)
             return False
         deadline = time.time() + config.NLU_LOCAL_START_TIMEOUT
         while time.time() < deadline:
             if _proc.poll() is not None:
                 _ERR = f"llama-server 退出码 {_proc.returncode}，见 {_LOG}"
-                print("[NLU]", _ERR)
+                _logger.info("[NLU]", _ERR)
                 return False
             if _http_ok(0.5):
-                print(f"[NLU] 端侧模型已加载（{time.time() - t0:.2f}s，Qwen2.5-1.5B Q4_K_M）")
+                _logger.info(f"[NLU] 端侧模型已加载（{time.time() - t0:.2f}s，Qwen2.5-1.5B Q4_K_M）")
                 return True
             time.sleep(0.2)
         _ERR = f"冷启动超时（>{config.NLU_LOCAL_START_TIMEOUT:.0f}s）"
-        print("[NLU]", _ERR)
+        _logger.info("[NLU]", _ERR)
         return False
 
 
@@ -355,7 +358,7 @@ def parse(text: str, history=None) -> dict:
         obj = _chat(text, history)
     except Exception as exc:
         _LAST["error"] = f"{type(exc).__name__}: {str(exc)[:120]}"
-        print("[NLU] 端侧解析失败:", _LAST["error"])
+        _logger.warning("[NLU] 端侧解析失败:", _LAST["error"])
         return {}
     intent = validate(obj, text)
     if intent:
