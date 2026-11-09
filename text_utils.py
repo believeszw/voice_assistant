@@ -1,4 +1,4 @@
-"""文本层的纯函数：噪声判断、口头词剥离、复合指令拆分、等待时间解析。
+"""文本层的纯函数：噪声判断、口头词剥离、复合指令拆分、等待时间解析、应用名白名单。
 
 这些函数只处理字符串，不依赖音频、网络或 Windows API，因此可以在任何环境
 （包括只有 pytest/ruff 的 CI）里直接单测。`assistant.py` 用它们把 ASR 的原始
@@ -13,6 +13,7 @@ from intents import cn2int
 
 __all__ = [
     "is_noise",
+    "is_safe_app_name",
     "split_compound",
     "strip_fillers",
     "strip_lead",
@@ -78,6 +79,9 @@ DELAY_RE = re.compile(
     r"(秒钟|秒|分钟|分)\s*(?:之后|以后|后)?\s*[，,。.]?\s*"
 )
 
+# 允许的启动目标字符：字母数字、常见路径符号、中文；拦掉 cmd 元字符（& | > < ^ % 等）
+SAFE_TARGET = re.compile(r"^[A-Za-z0-9_\-./:\\ \u4e00-\u9fff]{1,80}$")
+
 
 def is_noise(text: str) -> bool:
     """判断识别结果是不是「非指令的噪声」：纯标点、单字、口头词。"""
@@ -85,6 +89,11 @@ def is_noise(text: str) -> bool:
     if len(t) <= 1:
         return True
     return t in NOISE_WORDS
+
+
+def is_safe_app_name(name: str) -> bool:
+    """ASR 文本要交给 `cmd /c start` 前，先过字符白名单，避免命令注入。"""
+    return bool(SAFE_TARGET.match((name or "").strip()))
 
 
 def strip_fillers(text: str) -> str:

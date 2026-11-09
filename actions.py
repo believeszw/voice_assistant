@@ -3,7 +3,6 @@
 import ctypes
 import datetime
 import os
-import re
 import subprocess
 import time
 import webbrowser
@@ -13,6 +12,7 @@ from urllib.parse import quote
 import psutil
 
 from config import APPS, BROWSER_PATHS, FOLDERS, SEARCH_BROWSER
+from text_utils import is_safe_app_name
 
 user32 = ctypes.windll.user32
 
@@ -277,16 +277,12 @@ def _has_visible_window(exe: str) -> bool:
     return bool(found)
 
 
-# 允许的启动目标字符：字母数字、常见路径符号、中文；拦掉 cmd 元字符（& | > < ^ % 等）
-_SAFE_TARGET = re.compile(r"^[A-Za-z0-9_\-./:\\ \u4e00-\u9fff]{1,80}$")
-
-
 def open_app(name: str):
     target = resolve_app(name)
     if target is None:
         # 不在别名表里，直接交给 start 试一次（先做字符白名单，避免 ASR 文本被当成命令）
         target = name.strip()
-        if not _SAFE_TARGET.match(target):
+        if not is_safe_app_name(target):
             return False, f"这个应用名我不能直接启动：{name}"
     if target.startswith("http"):
         webbrowser.open(target)

@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from text_utils import is_noise, split_compound, strip_fillers, strip_lead, take_delay
+from text_utils import (
+    is_noise,
+    is_safe_app_name,
+    split_compound,
+    strip_fillers,
+    strip_lead,
+    take_delay,
+)
 
 
 @pytest.mark.parametrize(
@@ -72,3 +79,23 @@ def test_strip_lead(text, expected):
 )
 def test_take_delay(text, expected):
     assert take_delay(text) == expected
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("notepad.exe", True),
+        ("C:\\Program Files\\Tencent\\WeChat\\WeChat.exe", True),
+        ("记事本", True),
+        ("calc", True),
+        ("", False),
+        ("a" * 81, False),
+        ("notepad.exe & shutdown /s", False),
+        ("a|b", False),
+        ("a>b", False),
+        ("a^b", False),
+        ("a %USERPROFILE% b", False),
+    ],
+)
+def test_is_safe_app_name(name, expected):
+    assert is_safe_app_name(name) is expected
