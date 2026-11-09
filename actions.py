@@ -12,7 +12,7 @@ from urllib.parse import quote
 
 import psutil
 
-from config import APPS, FOLDERS
+from config import APPS, BROWSER_PATHS, FOLDERS, SEARCH_BROWSER
 
 user32 = ctypes.windll.user32
 
@@ -131,12 +131,17 @@ _NORMALIZED_APPS = {_normalize_name(k): v for k, v in APPS.items()}
 
 def resolve_app(name: str):
     key = _normalize_name(name)
-    if key in _NORMALIZED_APPS:
-        return _NORMALIZED_APPS[key]
-    for k, v in _NORMALIZED_APPS.items():
-        if k in key or key in k:
-            return v
-    return None
+    target = _NORMALIZED_APPS.get(key)
+    if target is None:
+        for k, v in _NORMALIZED_APPS.items():
+            if k in key or key in k:
+                target = v
+                break
+    if target in ("chrome", "msedge", "chrome.exe", "msedge.exe"):
+        exe = _browser_exe("chrome" if "chrome" in target else "edge")
+        if exe:
+            return exe
+    return target
 
 
 def _foreground_exe() -> str:
@@ -380,17 +385,49 @@ def cancel_shutdown():
 
 
 # ---------------- 网络 ----------------
-def search_web(term: str):
+def _browser_exe(name: str):
+    """返回浏览器可执行文件路径；找不到返回 None。"""
+    name = (name or "").lower()
+    for key, paths in BROWSER_PATHS.items():
+        if key in name:
+            for path in paths:
+                if os.path.exists(path):
+                    return path
+    return None
+
+
+def _open_url(url: str, browser: str = ""):
+    """优先用指定浏览器新标签页打开；失败退系统默认浏览器。返回 (ok, 浏览器名)。"""
+    want = browser or SEARCH_BROWSER
+    exe = _browser_exe(want)
+    if exe:
+        try:
+            subprocess.Popen(
+                [exe, "--new-tab", url], shell=False,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            return True, "Chrome" if "chrome" in exe.lower() else "Edge"
+        except OSError:
+            pass
+    try:
+        if webbrowser.open(url):
+            return True, "默认浏览器"
+    except Exception:
+        pass
+    return False, ""
+
+
+def search_web(term: str, browser: str = ""):
     term = term.strip()
     if not term:
         return False, "要搜什么？"
-    webbrowser.open("https://www.baidu.com/s?wd=" + quote(term))
-    return True, f"正在搜索 {term}"
+    ok, who = _open_url("https://www.baidu.com/s?wd=" + quote(term), browser)
+    return (True, f"已用{who}搜索 {term}") if ok else (False, "浏览器没打开成功")
 
 
-def open_url(url: str):
-    webbrowser.open(url)
-    return True, "已打开网页"
+def open_url(url: str, browser: str = ""):
+    ok, who = _open_url(url, browser)
+    return (True, f"已用{who}打开网页") if ok else (False, "浏览器没打开成功")
 
 
 # ---------------- 查询 ----------------

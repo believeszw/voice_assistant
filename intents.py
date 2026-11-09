@@ -78,6 +78,17 @@ def parse(text: str):
     if not t:
         return {"action": "unknown", "raw": raw}
 
+    # --- 指定浏览器搜索：「用/打开 谷歌浏览器 搜索 X」---
+    m = re.match(
+        r"^(?:用|打开|使用|拿)?(谷歌浏览器|谷歌|chrome|Chrome|edge|Edge)(?:浏览器)?"
+        r"(?:搜索|搜一下|搜|查一下|查|百度一下)(.+)$", t)
+    if m:
+        browser = "edge" if m.group(1).lower() == "edge" else "chrome"
+        term = _strip_polite(m.group(2)).strip()
+        term = re.sub(r"^(一下|下)", "", term).strip()
+        if term:
+            return {"action": "search", "term": term, "browser": browser, "raw": raw}
+
     # --- 系统控制（先匹配，避免被“打开/关闭”吃掉）---
     if "取消关机" in t or "取消重启" in t:
         return {"action": "cancel_shutdown", "raw": raw}
@@ -206,12 +217,22 @@ def parse(text: str):
                 return {"action": "open_app", "name": app, "raw": raw}
 
     # --- 搜索 / 网页 ---
+    browser = ""
+    for tag, name in (("谷歌浏览器", "chrome"), ("chrome", "chrome"), ("Chrome", "chrome"),
+                      ("谷歌", "chrome"), ("edge", "edge"), ("Edge", "edge")):
+        if tag in raw:
+            browser = name
+            break
     for verb in ("搜索", "搜一下", "搜", "查一下", "查", "百度一下", "百度", "谷歌一下", "谷歌"):
         if t.startswith(verb):
             term = _strip_polite(raw)[len(verb):].strip()
             term = re.sub(r"^(一下|下)", "", term)
+            term = re.sub(r"^(用)?(谷歌浏览器|谷歌|chrome|Chrome|edge|Edge)", "", term).strip()
             if term:
-                return {"action": "search", "term": term, "raw": raw}
+                intent = {"action": "search", "term": term, "raw": raw}
+                if browser:
+                    intent["browser"] = browser
+                return intent
     if "网页" in t or "网站" in t:
         return {"action": "open_url", "url": "https://www.baidu.com", "raw": raw}
 

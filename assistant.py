@@ -528,9 +528,9 @@ class Assistant:
         elif action == "cancel_shutdown":
             ok, msg = actions.cancel_shutdown()
         elif action == "search":
-            ok, msg = actions.search_web(intent["term"])
+            ok, msg = actions.search_web(intent["term"], intent.get("browser", ""))
         elif action == "open_url":
-            ok, msg = actions.open_url(intent["url"])
+            ok, msg = actions.open_url(intent["url"], intent.get("browser", ""))
         elif action == "time":
             ok, msg = actions.tell_time()
         elif action == "date":

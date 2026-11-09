@@ -135,6 +135,18 @@ APPS = {
 }
 
 # ---- 可控文件夹 ----
+SEARCH_BROWSER = "chrome"        # chrome / edge / default：搜索和打开网址优先用哪个浏览器
+BROWSER_PATHS = {
+    "chrome": [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ],
+    "edge": [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    ],
+}
+
 FOLDERS = {
     "下载": "Downloads",
     "下载文件夹": "Downloads",
