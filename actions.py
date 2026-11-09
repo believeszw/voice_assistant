@@ -402,8 +402,10 @@ def _open_url(url: str, browser: str = ""):
     exe = _browser_exe(want)
     if exe:
         try:
+            # 注意：Chrome 不支持 --new-tab 开关（传了只会开个空白新标签页），
+            # 直接把 URL 作为参数就会在已有窗口里新开标签并跳转。
             subprocess.Popen(
-                [exe, "--new-tab", url], shell=False,
+                [exe, url], shell=False,
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
         except OSError:
