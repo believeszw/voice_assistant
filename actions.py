@@ -406,9 +406,16 @@ def _open_url(url: str, browser: str = ""):
                 [exe, "--new-tab", url], shell=False,
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
-            return True, "Chrome" if "chrome" in exe.lower() else "Edge"
         except OSError:
             pass
+        else:
+            name = "chrome.exe" if "chrome" in exe.lower() else "msedge.exe"
+            # Chrome 可能被最小化/压在后台，主动把窗口提到前台；最多等 2 秒
+            for _ in range(10):
+                time.sleep(0.2)
+                if _foreground_exe() == name or _bring_to_front(name):
+                    break
+            return True, "Chrome" if "chrome" in name else "Edge"
     try:
         if webbrowser.open(url):
             return True, "默认浏览器"
