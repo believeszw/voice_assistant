@@ -174,6 +174,13 @@ def parse(text: str):
         keyword = next(w for w in ("输入", "打字", "键入", "写") if t.startswith(w))
         return {"action": "type_text", "text": _strip_polite(raw)[len(keyword):].strip(), "raw": raw}
 
+    # --- 文件夹里的具体文件：「打开桌面的新建文本」 ---
+    m = re.match(r"^(?:打开|开)?(桌面|下载|文档|图片|音乐|视频)(?:上|里|中)?的?(.+)$", t)
+    if m:
+        item = m.group(2).strip("。.!！?？ ")
+        if item and item not in ("文件夹", "目录", "窗口", "文件"):
+            return {"action": "open_item", "folder": m.group(1), "name": item, "raw": raw}
+
     # --- 文件夹 ---
     if t.startswith(("打开", "开")):
         folder = _match_folder(t)

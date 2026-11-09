@@ -475,7 +475,7 @@ class Assistant:
             return reply, should_exit
         except Exception as exc:  # pragma: no cover
             self.log(traceback.format_exc())
-            return f"执行出错：{exc}", False
+            return f"这一步没成功（{type(exc).__name__}），原因记在日志里了。", False
 
     def _chat_reply(self, text: str, history) -> str:
         if not self.cloud_llm or not text:
@@ -547,6 +547,8 @@ class Assistant:
             ok, msg = actions.show_desktop()
         elif action == "open_folder":
             ok, msg = actions.open_folder(intent["name"])
+        elif action == "open_item":
+            ok, msg = actions.open_item(intent["folder"], intent["name"])
         elif action == "brightness":
             ok, msg = actions.brightness(intent["delta"])
         else:

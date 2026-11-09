@@ -448,16 +448,70 @@ def show_desktop():
     return True, "已显示桌面"
 
 
-# ---------------- 文件夹 ----------------
-def open_folder(name: str):
+# ---------------- 文件夹 / 文件 ----------------
+def _launch_path(path: Path) -> bool:
+    """打开文件夹或文件：先试 shell 关联，失败退 explorer（提权进程上 startfile 常报 WinError 5）。"""
+    try:
+        os.startfile(str(path))
+        return True
+    except OSError:
+        pass
+    try:
+        subprocess.Popen(
+            ["explorer", str(path)], shell=False,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        time.sleep(0.2)
+        return True
+    except OSError:
+        return False
+
+
+def _folder_path(name: str):
     for key, folder in FOLDERS.items():
         if key in name:
             path = Path.home() / folder
-            if path.exists():
-                os.startfile(str(path))
-                return True, f"已打开{key}"
-            return False, f"找不到{key}文件夹"
-    return False, "不认识这个文件夹"
+            return key, path if path.is_dir() else None
+    return name, None
+
+
+def open_folder(name: str):
+    key, path = _folder_path(name)
+    if path is None:
+        return False, f"找不到{key}文件夹"
+    if _launch_path(path):
+        return True, f"已打开{key}"
+    return False, f"没权限打开{key}文件夹"
+
+
+_SUFFIXES = ("", ".txt", ".md", ".doc", ".docx", ".pdf", ".xls", ".xlsx",
+             ".ppt", ".pptx", ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mp3")
+
+
+def open_item(folder: str, name: str):
+    """打开某个文件夹下的指定文件，例如「打开桌面的新建文本」。"""
+    key, base = _folder_path(folder)
+    if base is None:
+        return False, f"找不到{key}文件夹"
+    name = name.strip().strip("。.!！?？ ")
+    if not name:
+        return open_folder(folder)
+    files = [p for p in base.iterdir() if p.is_file() or p.is_dir()]
+    lower = name.lower()
+    hits = [p for p in files if p.stem.lower() == lower]
+    hits += [p for p in files if p.stem.lower().startswith(lower)]
+    hits += [p for p in files if lower in p.stem.lower()]
+    for suffix in _SUFFIXES:
+        cand = base / (name + suffix)
+        if cand.exists() and cand not in hits:
+            hits.append(cand)
+    if not hits:
+        hint = "、".join(p.name for p in files[:6])
+        return False, f"{key}上没找到「{name}」" + (f"，有：{hint}" if hint else "")
+    target = hits[0]
+    if _launch_path(target):
+        return True, f"已打开{key}的「{target.stem}」"
+    return False, f"没权限打开「{target.name}」"
 
 
 # ---------------- 亮度 ----------------
