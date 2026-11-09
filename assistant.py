@@ -14,8 +14,11 @@
 """
 
 import argparse
+import ctypes
 import datetime
+import os
 import re
+import sys
 import time
 import traceback
 
@@ -160,6 +163,19 @@ class Assistant:
         if use_hotkey and not text_mode:
             self.hotkeys = Hotkeys()
             self.hotkeys.start()
+        self._log_env()
+
+    def _log_env(self):
+        """启动时打印运行环境，排查“为什么浏览器/脚本行为不对”时一眼能看出来。"""
+        try:
+            elevated = bool(ctypes.windll.shell32.IsUserAnAdmin())
+        except Exception:
+            elevated = False
+        chrome = actions._browser_exe("chrome") or "未找到"
+        edge = actions._browser_exe("edge") or "未找到"
+        self.log(f"[环境] python={sys.executable}")
+        self.log(f"[环境] 管理员权限={elevated}（True 时无法把 URL 交给已运行的普通权限浏览器）")
+        self.log(f"[环境] 搜索浏览器={config.SEARCH_BROWSER}｜Chrome={chrome}｜Edge={edge}")
 
     def _set_state(self, state: str):
         if state != self.state:

@@ -396,11 +396,42 @@ def _browser_exe(name: str):
     return None
 
 
+def _window_titles(exe_name: str):
+    """枚举某进程的可见窗口标题集合，用于判断浏览器是否真的打开了页面。"""
+    try:
+        import win32gui
+        import win32process
+    except Exception:
+        return set()
+    titles = set()
+
+    def _cb(hwnd, _):
+        if not win32gui.IsWindowVisible(hwnd):
+            return
+        txt = win32gui.GetWindowText(hwnd)
+        if not txt:
+            return
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+        try:
+            if psutil.Process(pid).name().lower() == exe_name.lower():
+                titles.add(txt)
+        except Exception:
+            return
+
+    try:
+        win32gui.EnumWindows(_cb, None)
+    except Exception:
+        return set()
+    return titles
+
+
 def _open_url(url: str, browser: str = ""):
-    """优先用指定浏览器新标签页打开；失败退系统默认浏览器。返回 (ok, 浏览器名)。"""
+    """优先用指定浏览器打开；2.5 秒内没看到窗口变化就退系统默认浏览器（保证一定能打开）。"""
     want = browser or SEARCH_BROWSER
     exe = _browser_exe(want)
     if exe:
+        name = "chrome.exe" if "chrome" in exe.lower() else "msedge.exe"
+        before = _window_titles(name)
         try:
             # 注意：Chrome 不支持 --new-tab 开关（传了只会开个空白新标签页），
             # 直接把 URL 作为参数就会在已有窗口里新开标签并跳转。
@@ -411,19 +442,23 @@ def _open_url(url: str, browser: str = ""):
         except OSError:
             pass
         else:
-            name = "chrome.exe" if "chrome" in exe.lower() else "msedge.exe"
-            # Chrome 可能被最小化/压在后台，主动把窗口提到前台；最多等 2 秒
-            for _ in range(10):
-                time.sleep(0.2)
+            for _ in range(8):
+                time.sleep(0.3)
                 if _foreground_exe() == name or _bring_to_front(name):
-                    break
-            return True, "Chrome" if "chrome" in name else "Edge"
+                    pass
+                if _window_titles(name) - before:
+                    return True, "Chrome" if "chrome" in name else "Edge"
+    # 指定浏览器没起来（提权进程/浏览器无响应等），退回“系统的默认浏览器”
     try:
         if webbrowser.open(url):
             return True, "默认浏览器"
     except Exception:
         pass
-    return False, ""
+    try:
+        os.startfile(url)
+        return True, "默认浏览器"
+    except OSError:
+        return False, ""
 
 
 def search_web(term: str, browser: str = ""):
