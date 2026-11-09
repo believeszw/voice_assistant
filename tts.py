@@ -17,6 +17,7 @@ from collections import deque
 import numpy as np
 
 import llm
+import logging_utils
 import tts_local
 from config import (
     CLOUD_ENABLED,
@@ -29,6 +30,8 @@ from config import (
     TTS_VOICE_NAME,
     WAKE_ACK,
 )
+
+_logger = logging_utils.get_logger("voice_assistant.tts")
 
 _ASSET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 _QUICK_WAV = None
@@ -102,7 +105,7 @@ def _ps_render_wav(text: str) -> bytes:
         with open(path, "rb") as f:
             return f.read()
     except Exception as exc:  # pragma: no cover
-        print("[TTS] PowerShell 合成失败:", str(exc)[:120])
+        _logger.warning("[TTS] PowerShell 合成失败:", str(exc)[:120])
         return b""
     finally:
         try:
@@ -140,7 +143,7 @@ def _sapi_render_wav(text: str, voice) -> bytes:
             voice.Speak(text, 0)         # 同步渲染到文件
             ok = True
         except Exception as exc:  # pragma: no cover
-            print("[TTS] SAPI 渲染失败，改用 System.Speech:", str(exc)[:120])
+            _logger.warning("[TTS] SAPI 渲染失败，改用 System.Speech:", str(exc)[:120])
         finally:
             # 必须先关文件流再读：SAPI 写入期间文件被占用，直接读会 PermissionError
             try:
@@ -219,7 +222,7 @@ def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
             try:
                 far_sink(ref_bytes)
             except Exception as exc:  # pragma: no cover
-                print("[TTS] 参考信号推送失败:", str(exc)[:120])
+                _logger.warning("[TTS] 参考信号推送失败:", str(exc)[:120])
 
     i = 0
     try:
@@ -244,7 +247,7 @@ def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
                         while len(pending_refs) > ref_delay_blocks:
                             _emit_ref(pending_refs.popleft())
                 except Exception as exc:  # pragma: no cover
-                    print("[TTS] 参考信号推送失败:", str(exc)[:120])
+                    _logger.warning("[TTS] 参考信号推送失败:", str(exc)[:120])
             i += n
         if not stop_event.is_set():
             while pending_refs:
@@ -285,7 +288,7 @@ class Speaker:
                 voice.Volume = 100
                 voice.Rate = 0
             except Exception as exc:  # pragma: no cover
-                print("[TTS] SAPI 初始化失败:", exc)
+                _logger.warning("[TTS] SAPI 初始化失败:", exc)
                 voice = None
 
         while True:
@@ -309,7 +312,7 @@ class Speaker:
                 else:
                     self._speak_local_dual(text, voice)
             except Exception as exc:  # pragma: no cover
-                print("[TTS] 朗读失败:", exc)
+                _logger.warning("[TTS] 朗读失败:", exc)
                 try:
                     self._speak_local_dual(text, voice)
                 except Exception:
@@ -327,7 +330,7 @@ class Speaker:
                 wav = llm.tts_wav(text, voice=TTS_VOICE_NAME, style=TTS_STYLE,
                                   timeout=TTS_CLOUD_TIMEOUT)
             except Exception as exc:
-                print("[TTS] 云端合成失败/超时，改用端侧:", str(exc)[:120])
+                _logger.warning("[TTS] 云端合成失败/超时，改用端侧:", str(exc)[:120])
                 return False
             if not wav:
                 return False
@@ -340,7 +343,7 @@ class Speaker:
                 self._playing = False
             return True
         except Exception as exc:  # pragma: no cover
-            print("[TTS] 播放失败，改用本地:", str(exc)[:120])
+            _logger.warning("[TTS] 播放失败，改用本地:", str(exc)[:120])
             return False
 
     def _play_bytes(self, wav, text, voice) -> bool:
@@ -392,7 +395,7 @@ class Speaker:
             _remember(text, wav)
             stats = tts_local.last_stats()
             if stats.get("synth_ms"):
-                print(f"[TTS] 端侧合成 {stats['synth_ms']:.0f} ms"
+                _logger.info(f"[TTS] 端侧合成 {stats['synth_ms']:.0f} ms"
                       f"（{stats.get('backend', 'local')}，{stats.get('text_len', 0)} 字 → "
                       f"{stats.get('audio_seconds', 0):.1f} s 音频）")
         self._playing = True
@@ -404,7 +407,7 @@ class Speaker:
 
     def _speak_sapi(self, text: str, voice):
         if not _HAS_SAPI or voice is None:
-            print(f"[助手] {text}")
+            _logger.info(f"[助手] {text}")
             return
         try:
             voice.Speak(text, SVSF_ASYNC)
@@ -415,30 +418,30 @@ class Speaker:
                 if voice.WaitUntilDone(50):
                     break
         except Exception as exc:  # pragma: no cover
-            print("[TTS] SAPI 朗读失败:", exc)
+            _logger.warning("[TTS] SAPI 朗读失败:", exc)
 
     # ------------------------------------------------ 对外
     def say(self, text: str):
         if not text:
             return
-        print(f"[助手] {text}")
+        _logger.info(f"[助手] {text}")
         done = threading.Event()
         self._q.put((text, done, "normal"))
         if not done.wait(timeout=180):  # 防 worker 异常导致永久阻塞
-            print("[TTS] 朗读超时（180s），跳过")
+            _logger.info("[TTS] 朗读超时（180s），跳过")
 
     def say_quick(self, text: str):
         """低延迟短句（唤醒回应「我在」）：优先播预生成音频，没有再退本地 SAPI。"""
         if not text:
             return
-        print(f"[助手] {text}")
+        _logger.info(f"[助手] {text}")
         wav = _quick_wav() if text == WAKE_ACK else None
         if wav and _HAS_SD:
             try:
                 _play_wav(wav, self._stop, self.far_sink)
                 return
             except Exception as exc:  # pragma: no cover
-                print("[TTS] 短句播放失败，改用本地:", str(exc)[:120])
+                _logger.warning("[TTS] 短句播放失败，改用本地:", str(exc)[:120])
         done = threading.Event()
         self._q.put((text, done, "quick"))
         done.wait()
@@ -449,7 +452,7 @@ class Speaker:
         if not text:
             done.set()
             return done
-        print(f"[助手] {text}")
+        _logger.info(f"[助手] {text}")
         self._q.put((text, done, "normal"))
         return done
 

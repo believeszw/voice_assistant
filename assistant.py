@@ -47,7 +47,11 @@ from config import (
 from frontend import AudioFrontend, enhance_pcm
 from hotkey import Hotkeys
 from intents import cn2int, parse
+from logging_utils import get_logger
+from logging_utils import setup as _setup_logging
 from tts import Speaker
+
+_logger = get_logger("voice_assistant")
 
 WAKE_ALL = tuple(dict.fromkeys(WAKE_WORDS + WAKE_WORDS_FUZZY))
 
@@ -157,6 +161,7 @@ HELP = (
 
 class Assistant:
     def __init__(self, text_mode=False, dry_run=False, use_hotkey=True, use_wake=True):
+        _setup_logging()
         self.text_mode = text_mode
         self.dry_run = dry_run
         self.use_wake = use_wake
@@ -318,7 +323,7 @@ class Assistant:
 
     def log(self, text: str):
         line = f"{datetime.datetime.now():%H:%M:%S} {text}"
-        print(line)
+        _logger.info(line)
 
     # ---------------- 识别 ----------------
     def _asr(self, pcm: bytes, local_result=None):
@@ -603,7 +608,7 @@ class Assistant:
     # ---------------- 文字模式 ----------------
     def run_text(self):
         mode = "云端增强" if (self.cloud_asr or self.cloud_llm) else "纯本地"
-        print(f"文字模式（{mode}）。输入指令，输入 exit 退出。")
+        _logger.info(f"文字模式（{mode}）。输入指令，输入 exit 退出。")
         self.say("文字模式已启动。")
         history = []
         while True:
@@ -634,18 +639,18 @@ class Assistant:
             self.local_asr = None
             self.log(f"[ASR] 本地双遍不可用: {str(exc)[:120]}")
         local_ok = bool(self.local_asr and self.local_asr.available())
-        print(f"[麦克风] {mic.name}")
+        _logger.info(f"[麦克风] {mic.name}")
         engine = "云端 MiMo 主力" if self.cloud_asr else "本地识别"
-        print(f"[识别] {engine}；本地双遍(sherpa-onnx): {'可用' if local_ok else '不可用'}")
+        _logger.info(f"[识别] {engine}；本地双遍(sherpa-onnx): {'可用' if local_ok else '不可用'}")
         try:
             self.kws = kws_mod.WakeWord(log=self.log)
         except Exception as exc:  # noqa: BLE001
             self.kws = None
             self.log(f"[KWS] 加载失败: {str(exc)[:120]}")
         wake_ok = bool(self.kws and self.kws.available())
-        print(f"[唤醒] KWS 本地模型: {'可用' if wake_ok else '不可用（退回文本匹配）'}"
-              f"；热键 Ctrl+Alt+Space")
-        print(f"[唤醒词] {' / '.join(WAKE_WORDS)}")
+        _logger.info(f"[唤醒] KWS 本地模型: {'可用' if wake_ok else '不可用（退回文本匹配）'}"
+                     "；热键 Ctrl+Alt+Space")
+        _logger.info(f"[唤醒词] {' / '.join(WAKE_WORDS)}")
         # 提示语里不要念出唤醒词本身，否则会被自己的扬声器触发
         self.say("语音助手已启动。说唤醒词，或者按 Ctrl Alt 空格 叫我。")
         mic.flush()
@@ -857,6 +862,7 @@ class Assistant:
         self._set_state("IDLE")
 
 def main():
+    _setup_logging()
     parser = argparse.ArgumentParser(description="电脑语音助手")
     parser.add_argument("--text", action="store_true", help="文字模式（键盘输入）")
     parser.add_argument("--dry-run", action="store_true", help="演练模式，不执行危险操作")
@@ -876,7 +882,7 @@ def main():
         else:
             assistant.run_voice()
     except KeyboardInterrupt:
-        print("\n[助手] 已退出。")
+        _logger.info("\n[助手] 已退出。")
     finally:
         try:
             assistant.speaker.shutdown()
