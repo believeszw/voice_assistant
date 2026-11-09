@@ -3,6 +3,11 @@
 一个跑在 Windows 上的中文语音助手：唤醒后可以用语音控制电脑的常用操作（音量、应用、
 截屏、锁屏、剪贴板、搜索……），也支持连续对话和闲聊；播报过程中可以直接插话打断。
 
+[![CI](https://github.com/believeszw/voice_assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/believeszw/voice_assistant/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
 ## 演示视频
 
 [▶ 点击播放 57 秒演示视频](https://media.githubusercontent.com/media/believeszw/voice_assistant/main/docs/media/demo.mp4)
@@ -57,7 +62,24 @@ python assistant.py --text
 没配 key 也能跑：自动退化为本地 Vosk 识别 + 规则意图 + SAPI 播报（能力弱一些）。
 `VOICE_OFFLINE=1` 可强制离线模式。
 
-## 用法
+## 开发与测试
+
+```bash
+python -m pip install -r requirements.txt -r requirements-dev.txt
+
+python -m ruff check .                 # 风格/静态检查（核心模块 + tests）
+python -m pytest -m "not audio"        # 纯逻辑用例，无需声卡（CI 跑的也是这组）
+python -m pytest                       # Windows + 音频依赖就位时跑全量
+tools\run_regress.bat                  # 本机声学/端到端回归（AEC、唤醒、打断、复合指令）
+```
+
+- 设计说明、重构记录与已知差距见 [docs/代码审查报告.md](docs/代码审查报告.md)。
+- 指令解析是**规则表驱动**（`intents.py` 的 `RULES` 按顺序命中）：新增说法时，
+  同时补 `tests/test_intents.py` 的 golden 用例，保证旧说法不回归。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 测试分层：`tests/` 里是不依赖声卡的逻辑用例；`tools/` 下是验收/诊断脚本（不进 CI，也
+  不做风格强制），涉及音频链路的改动请在 PR 里贴 `tools/run_regress.bat` / `tools/demo_e2e.py`
+  的输出。
+
 
 - 唤醒词：`小助手` / `你好小助手` / `小助手小助手` / `小爱小助手`，或热键 `Ctrl+Alt+Space`。
 - 一次唤醒可连续说多轮（默认最多 6 轮，静音超过 6 秒自动退出；说“结束/退出”主动结束）。
@@ -95,7 +117,10 @@ python assistant.py --text
 | `kws.py` | 本地唤醒词：sherpa-onnx 专用 KWS 模型 |
 | `kws_keywords.txt` | 唤醒词注册表（拼音声母/韵母 + 声调） |
 | `assets/wake_ack.wav` | 预生成的唤醒回应「我在」，唤醒时直接播、不等云端合成 |
-| `tools/` | 自测与验收脚本 |
+| `tools/` | 自测与验收脚本（诊断用，不参与 CI） |
+| `tests/` | pytest 用例：golden 指令语料 + 纯逻辑辅助函数 |
+| `pyproject.toml` | 打包与工具配置（ruff / pytest 标记） |
+| `CONTRIBUTING.md` | 贡献指南：环境、检查命令、规则表约定 |
 
 ## 验收数据（第 1、2 步：AEC + VAD + 打断）
 

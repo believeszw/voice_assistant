@@ -37,7 +37,7 @@ class Mic:
     def __init__(self, device=None, samplerate: int = SAMPLE_RATE):
         self.device = find_input_device() if device is None else device
         self.samplerate = samplerate
-        self._q: "queue.Queue[bytes]" = queue.Queue(maxsize=200)
+        self._q: queue.Queue[bytes] = queue.Queue(maxsize=200)
         self._stream = None
         self._overflow = 0
 

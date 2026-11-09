@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "windows-voice-assistant"
+version = "0.1.0"
+description = "Windows 中文语音助手：本地唤醒 + 端侧优先 ASR + 连续对话 + 播报中打断 + 语音控制电脑"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "believeszw" }]
+keywords = ["voice-assistant", "wake-word", "asr", "tts", "windows", "barge-in"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+# 运行依赖见 requirements.txt（含 Windows 专用 wheel）。这里留空，
+# 让 `pip install -e .` 只装本项目，不因系统差异装不上。
+dependencies = []
+
+[tool.setuptools]
+py-modules = [
+    "actions",
+    "aec3",
+    "aec_nlms",
+    "asr",
+    "asr_local",
+    "assistant",
+    "audio",
+    "config",
+    "frontend",
+    "hotkey",
+    "intents",
+    "kws",
+    "llm",
+    "nlu_local",
+    "tts",
+    "tts_local",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+# tools/ 下是 60 多个一次性的诊断/压测脚本（models 下载、AEC 调参、E2E 回放等），
+# 不对外复用，风格检查会淹没核心模块的问题，因此整体排除；核心模块与 tests 严格检查。
+exclude = [
+    ".venv",
+    "models",
+    "assets",
+    "docs",
+    "tools",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",  # 中文注释/长句不强制 79/120 列
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "audio: 需要 Windows 音频/COM 依赖的用例；无桌面环境时用 `-m 'not audio'` 跳过",
+]

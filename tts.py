@@ -18,8 +18,17 @@ import numpy as np
 
 import llm
 import tts_local
-from config import (CLOUD_ENABLED, CLOUD_TTS, TTS_CLOUD_TIMEOUT, TTS_LOCAL_ENABLED,
-                    TTS_LOCAL_FIRST, TTS_STYLE, TTS_VOICE, TTS_VOICE_NAME, WAKE_ACK)
+from config import (
+    CLOUD_ENABLED,
+    CLOUD_TTS,
+    TTS_CLOUD_TIMEOUT,
+    TTS_LOCAL_ENABLED,
+    TTS_LOCAL_FIRST,
+    TTS_STYLE,
+    TTS_VOICE,
+    TTS_VOICE_NAME,
+    WAKE_ACK,
+)
 
 _ASSET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 _QUICK_WAV = None
@@ -71,7 +80,7 @@ def _tmp_wav(tag: str) -> str:
         os.makedirs(base, exist_ok=True)
     except OSError:
         base = tempfile.gettempdir()
-    return os.path.join(base, "%s_%d.wav" % (tag, threading.get_ident()))
+    return os.path.join(base, f"{tag}_{threading.get_ident()}.wav")
 
 
 def _ps_render_wav(text: str) -> bytes:
@@ -123,6 +132,7 @@ def _sapi_render_wav(text: str, voice) -> bytes:
         path = _tmp_wav("dsh_sapi")
         old = None
         ok = False
+        data = b""
         try:
             old = voice.AudioOutputStream
             stream.Open(path, 3, False)  # SSFMCreateForWrite
@@ -147,8 +157,9 @@ def _sapi_render_wav(text: str, voice) -> bytes:
                 os.remove(path)
             except OSError:
                 pass
-            if ok and data:
-                return data
+        # 不在 finally 里 return（B012：会吞掉异常），读完再统一返回
+        if ok and data:
+            return data
     return _ps_render_wav(text)
 
 
@@ -248,7 +259,7 @@ def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
 
 class Speaker:
     def __init__(self):
-        self._q: "queue.Queue[tuple]" = queue.Queue()
+        self._q: queue.Queue[tuple] = queue.Queue()
         self._stop = threading.Event()
         self._pause = threading.Event()
         self._playing = False

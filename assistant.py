@@ -29,10 +29,21 @@ import config
 import kws as kws_mod
 import llm
 import nlu_local
-from config import (CLOUD_ASR, CLOUD_ENABLED, CLOUD_LLM, CLOUD_TTS,
-                    COMMAND_MAX_SECONDS, COMMAND_SILENCE_SECONDS, DANGEROUS,
-                    FOLLOWUP_START_TIMEOUT, SAMPLE_RATE, SESSION_MAX_TURNS,
-                    WAKE_ACK, WAKE_WORDS, WAKE_WORDS_FUZZY)
+from config import (
+    CLOUD_ASR,
+    CLOUD_ENABLED,
+    CLOUD_LLM,
+    CLOUD_TTS,
+    COMMAND_MAX_SECONDS,
+    COMMAND_SILENCE_SECONDS,
+    DANGEROUS,
+    FOLLOWUP_START_TIMEOUT,
+    SAMPLE_RATE,
+    SESSION_MAX_TURNS,
+    WAKE_ACK,
+    WAKE_WORDS,
+    WAKE_WORDS_FUZZY,
+)
 from frontend import AudioFrontend, enhance_pcm
 from hotkey import Hotkeys
 from intents import cn2int, parse
@@ -390,7 +401,7 @@ class Assistant:
             if any(known):
                 replies = []
                 should_exit = False
-                for part, intent, ok in zip(parts, intents, known):
+                for part, intent, ok in zip(parts, intents, known, strict=False):
                     delay, part = _take_delay(part)
                     if delay:
                         self.log(f"[等待] {delay:g} 秒")
@@ -727,62 +738,98 @@ class Assistant:
             return ""
         return rest
 
+    def _take_pre_roll(self) -> bytes:
+        """上一轮被打断时，把打断瞬间录到的开头还给下一轮，避免第一句话被切头。"""
+        if not self._interrupted:
+            return b""
+        pre = self._pre_pcm or b""
+        self._pre_pcm = b""
+        self._interrupted = False
+        return pre
+
+    def _listen_once(self, mic, turn, pre):
+        """录一轮并识别，返回 ``(text, engine, secs, asr_pcm)``；没听到声音返回 None。"""
+        self._set_state("LISTENING")
+        wait = FOLLOWUP_START_TIMEOUT if turn else 6.0
+        local = getattr(self, "local_asr", None)
+        local_ok = bool(local and local.available())
+        last_partial = {"t": 0.0}
+
+        # 用默认参数绑定循环变量，避免闭包捕获到下一轮的值（B023）
+        def _on_block(block, last_partial=last_partial, local_ok=local_ok, local=local):
+            if not local_ok:
+                return
+            partial = local.feed(block)
+            now = time.time()
+            if partial and now - last_partial["t"] > 0.4:
+                last_partial["t"] = now
+                self.log(f"[草稿] {partial}")
+
+        if local_ok:
+            local.start()
+        pcm, secs, ok = audio.record_utterance(
+            mic,
+            max_seconds=COMMAND_MAX_SECONDS,
+            silence_seconds=COMMAND_SILENCE_SECONDS,
+            start_timeout=wait,
+            on_block=_on_block if local_ok else None,
+            pre_pcm=pre,
+        )
+        if not ok:
+            return None
+        local_result = local.finish(pcm) if local_ok else None
+        # 云端识别/云端重听用降噪+AGC 后的音频（本地双遍已在原始流上跑完）
+        asr_pcm = enhance_pcm(pcm) or pcm
+        text, engine = self._asr(asr_pcm, local_result)
+        text, engine = self._retry_cloud_if_unknown(text, engine, asr_pcm)
+        return text, engine, secs, asr_pcm
+
+    def _retry_cloud_if_unknown(self, text, engine, asr_pcm):
+        """端侧识别出了字、但规则解析不出意图时，才用云端重听一次（云端为辅）。"""
+        should_retry = (
+            getattr(config, "ASR_CLOUD_RETRY_ON_UNKNOWN", True)
+            and self.cloud_asr
+            and str(engine).startswith("local")
+            and parse(text).get("action") == "unknown"
+        )
+        if not should_retry:
+            return text, engine
+        cloud_text = ""
+        try:
+            cloud_text = (llm.asr_pcm(asr_pcm, SAMPLE_RATE) or "").strip()
+        except Exception as exc:
+            self.log(f"[ASR] 云端重听失败: {str(exc)[:120]}")
+        if not cloud_text or cloud_text == text:
+            return text, engine
+        if parse(cloud_text).get("action") == "unknown":
+            # 极低信噪比下云端也可能听错，不覆盖本地结果
+            self.log(f"[ASR] 云端重听也没有明确意图，保留本地结果: {cloud_text!r}")
+            return text, engine
+        self.log(f"[ASR] 本地文本解析不了，用云端重听: {cloud_text!r}")
+        return cloud_text, "cloud"
+
     def _session(self, mic, initial_text=""):
-        """一次唤醒后的连续对话。"""
+        """一次唤醒后的连续对话：最多 SESSION_MAX_TURNS 轮，可被打断。"""
         self._set_state("WAKING")
         self.say(WAKE_ACK)
         mic.flush()
         history = []
-        pcm = None
         turn = 0
         rounds = 0
         while turn < SESSION_MAX_TURNS:
             rounds += 1
             if rounds > SESSION_MAX_TURNS * 2:  # 防止被连续打断时无限循环
                 break
-            # 上一轮被打断：把打断瞬间录到的开头接回来，避免第一句话被切头
-            pre = b""
-            if turn > 0 and self._interrupted:
-                pre = self._pre_pcm or b""
-                self._pre_pcm = b""
-                self._interrupted = False
+            pre = self._take_pre_roll()
             if turn == 0 and initial_text and not _is_noise(initial_text):
                 text, engine, secs = initial_text, "wake", 0.0
             else:
-                self._set_state("LISTENING")
-                wait = FOLLOWUP_START_TIMEOUT if turn else 6.0
-                local = getattr(self, "local_asr", None)
-                local_ok = bool(local and local.available())
-                last_partial = {"t": 0.0}
-
-                def _on_block(block):
-                    nonlocal_last = last_partial
-                    if not local_ok:
-                        return
-                    partial = local.feed(block)
-                    now = time.time()
-                    if partial and now - nonlocal_last["t"] > 0.4:
-                        nonlocal_last["t"] = now
-                        self.log(f"[草稿] {partial}")
-
-                if local_ok:
-                    local.start()
-                pcm, secs, ok = audio.record_utterance(
-                    mic,
-                    max_seconds=COMMAND_MAX_SECONDS,
-                    silence_seconds=COMMAND_SILENCE_SECONDS,
-                    start_timeout=wait,
-                    on_block=_on_block if local_ok else None,
-                    pre_pcm=pre,
-                )
-                if not ok:
+                got = self._listen_once(mic, turn, pre)
+                if got is None:
                     self.say("没听到声音。" if turn == 0 else "好，先这样。需要时再叫我。")
                     self._set_state("IDLE")
                     return
-                local_result = local.finish(pcm) if local_ok else None
-                # 云端识别/云端重听用降噪+AGC 后的音频（本地双遍已在原始流上跑完）
-                asr_pcm = enhance_pcm(pcm) or pcm
-                text, engine = self._asr(asr_pcm, local_result)
+                text, engine, secs, _asr_pcm = got
             self.log(f"指令({secs:.1f}s, {engine}): {text!r}")
             if not text:
                 self.say("没听清，再说一次。")
@@ -792,25 +839,6 @@ class Assistant:
                 # 「Yeah。」「嗯。」这类不是指令：不回复、不占对话轮次
                 self.log(f"[噪声] 忽略: {text!r}")
                 continue
-            # 端侧识别出了字、但规则解析不出意图：才花一次云端识别重听（云端为辅）
-            if (pcm is not None
-                    and getattr(config, "ASR_CLOUD_RETRY_ON_UNKNOWN", True)
-                    and self.cloud_asr and str(engine).startswith("local")
-                    and parse(text).get("action") == "unknown"):
-                cloud_text = ""
-                try:
-                    cloud_text = (llm.asr_pcm(asr_pcm, SAMPLE_RATE) or "").strip()
-                except Exception as exc:
-                    self.log(f"[ASR] 云端重听失败: {str(exc)[:120]}")
-                if cloud_text and cloud_text != text:
-                    # 只有「云端文本能解析出明确意图」时才采纳；否则保留本地结果，
-                    # 避免在极低信噪比下云端也听错、反而把本地更好的结果覆盖掉。
-                    if parse(cloud_text).get("action") != "unknown":
-                        self.log(f"[ASR] 本地文本解析不了，用云端重听: {cloud_text!r}")
-                        text, engine = cloud_text, "cloud"
-                        self.log(f"指令({secs:.1f}s, {engine}): {text!r}")
-                    else:
-                        self.log(f"[ASR] 云端重听也没有明确意图，保留本地结果: {cloud_text!r}")
             self._set_state("THINKING")
             reply, should_exit = self.handle(text, history)
             self.say(reply)
@@ -827,7 +855,6 @@ class Assistant:
             turn += 1
         self.say("先聊到这，需要时再叫我。")
         self._set_state("IDLE")
-
 
 def main():
     parser = argparse.ArgumentParser(description="电脑语音助手")
