@@ -35,6 +35,7 @@ def _make_aec():
     """按 config.AEC_ENGINE 选择 AEC：auto 优先 AEC3，失败退回 FLMS。"""
     try:
         import config as _cfg
+
         engine = str(getattr(_cfg, "AEC_ENGINE", "auto")).lower()
     except Exception:
         engine = "auto"
@@ -53,9 +54,9 @@ except Exception:  # pragma: no cover
     ort = None
 
 SR = 16000
-FRAME = 256          # AEC 帧长 16ms
-VAD_SR = 8000        # 本机 silero_vad.onnx 只有 8k 采样率下判据正常
-VAD_WIN = 256        # 8k 下 32ms
+FRAME = 256  # AEC 帧长 16ms
+VAD_SR = 8000  # 本机 silero_vad.onnx 只有 8k 采样率下判据正常
+VAD_WIN = 256  # 8k 下 32ms
 
 MODEL_CANDIDATES = (
     Path(__file__).with_name("models") / "silero" / "silero_vad.onnx",
@@ -74,9 +75,14 @@ def _to_bytes(x: np.ndarray) -> bytes:
 class SileroVAD:
     """Silero VAD（ONNX）：8k 域、256 样本一帧。"""
 
-    def __init__(self, model_path: str = "", threshold: float = 0.35,
-                 hangover_ms: int = 300, min_speech_ms: int = 96,
-                 sr: int = VAD_SR):
+    def __init__(
+        self,
+        model_path: str = "",
+        threshold: float = 0.35,
+        hangover_ms: int = 300,
+        min_speech_ms: int = 96,
+        sr: int = VAD_SR,
+    ):
         self.sr = sr
         self.threshold = threshold
         self.hangover = max(1, int(hangover_ms / (1000 * VAD_WIN / sr)))
@@ -89,8 +95,7 @@ class SileroVAD:
         self._silence = 0
         self._session = None
         self._use_onnx = False
-        path = Path(model_path) if model_path else next(
-            (p for p in MODEL_CANDIDATES if p.exists()), None)
+        path = Path(model_path) if model_path else next((p for p in MODEL_CANDIDATES if p.exists()), None)
         if ort is not None and path is not None:
             self._session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
             self._use_onnx = True
@@ -106,7 +111,7 @@ class SileroVAD:
 
     def _infer(self, block: np.ndarray) -> float:
         if not self._use_onnx:
-            rms = float(np.sqrt(np.mean(block ** 2) + 1e-12))
+            rms = float(np.sqrt(np.mean(block**2) + 1e-12))
             self._floor = 0.9 * self._floor + 0.1 * rms
             return 1.0 if rms > max(0.01, 3.0 * self._floor) else 0.0
         x = block.reshape(1, -1).astype(np.float32)
@@ -146,14 +151,14 @@ class AudioFrontend:
         self.vad = vad or SileroVAD()
         try:
             import config as _cfg
+
             ns_on = bool(getattr(_cfg, "NS_ENABLED", True))
             agc_on = bool(getattr(_cfg, "AGC_ENABLED", True))
             agc_target = float(getattr(_cfg, "AGC_TARGET_RMS", 0.05))
         except Exception:  # 单独跑 frontend 时没有 config 也能工作
             ns_on, agc_on, agc_target = True, True, 0.05
         # 唤醒链路用语音保护档：避免过减削掉 0 dB 唤醒词
-        self.ns = (NoiseSuppressor(speech_floor=0.35, speech_start=1.6,
-                                   speech_ratio=2.6) if ns_on else None)
+        self.ns = NoiseSuppressor(speech_floor=0.35, speech_start=1.6, speech_ratio=2.6) if ns_on else None
         self.agc = AGC(target_rms=agc_target) if agc_on else None
         self.last_enhanced = np.zeros(0, dtype=np.float32)
         self._far_acc = np.zeros(0, dtype=np.float32)
@@ -230,8 +235,8 @@ class AudioFrontend:
         self._near_acc = np.concatenate([self._near_acc, near])
         clean_chunks = []
         while len(self._near_acc) >= self.frame:
-            frame = self._near_acc[:self.frame]
-            self._near_acc = self._near_acc[self.frame:]
+            frame = self._near_acc[: self.frame]
+            self._near_acc = self._near_acc[self.frame :]
             if self.aec:
                 fsz = self.frame
                 if len(self._far_acc) >= fsz:
@@ -264,7 +269,7 @@ class AudioFrontend:
         # 打断判定：三路证据融合——能量比（相对底噪/漏音基线）、绝对能量、VAD 概率。
         # 真实设备上回声很弱、AEC 压不出 ERLE 时，单用绝对能量阈值会漏检正常音量，
         # 所以以「相对基线」为主证据，再让 VAD 概率做二次确认。
-        rms = float(np.sqrt(np.mean(clean ** 2) + 1e-12))
+        rms = float(np.sqrt(np.mean(clean**2) + 1e-12))
         self._clean_hist.append(rms)
         if len(self._clean_hist) < 10:  # 前 ~0.5s 基线未建立（按 50ms 块计），避免起播瞬态误判
             self.barge_in = False
@@ -287,13 +292,12 @@ class AudioFrontend:
         self._barge_hits = self._barge_hits + 1 if (ratio_ev or loud_ev) else 0
         self._prob_hits = self._prob_hits + 1 if prob_ev else 0
         self.barge_in = bool(
-            self._barge_hits >= 2
-            or strong_ev
-            or (prob >= 0.9 and rms > 0.05)
-            or (self._prob_hits >= 2 and rms > 0.04))
+            self._barge_hits >= 2 or strong_ev or (prob >= 0.9 and rms > 0.05) or (self._prob_hits >= 2 and rms > 0.04)
+        )
         self.barge_evidence = (
             f"rms={rms:.3f} ratio={ratio:.1f} base={base:.3f} prob={prob:.2f} "
-            f"pk={prob_peak:.2f} weak={int(weak_echo)} hits={self._barge_hits}/{self._prob_hits}")
+            f"pk={prob_peak:.2f} weak={int(weak_echo)} hits={self._barge_hits}/{self._prob_hits}"
+        )
         return _to_bytes(enh), prob, active
 
     def _enhance(self, clean: np.ndarray) -> np.ndarray:
@@ -317,12 +321,18 @@ class NoiseSuppressor:
     无第三方依赖的工程实现，量产应换 DeepFilterNet / RNNoise。
     """
 
-    N = 256       # 16 ms 帧（16 kHz）
-    HOP = 128     # 50% 重叠
+    N = 256  # 16 ms 帧（16 kHz）
+    HOP = 128  # 50% 重叠
 
-    def __init__(self, oversub: float = 3.4, floor_gain: float = 0.03,
-                 smooth: float = 0.6, speech_floor: float | None = None,
-                 speech_ratio: float = 2.6, speech_start: float = 1.6):
+    def __init__(
+        self,
+        oversub: float = 3.4,
+        floor_gain: float = 0.03,
+        smooth: float = 0.6,
+        speech_floor: float | None = None,
+        speech_ratio: float = 2.6,
+        speech_start: float = 1.6,
+    ):
         self.w = np.hanning(self.N).astype(np.float32)
         self.oversub = float(oversub)
         self.floor_gain = float(floor_gain)
@@ -348,10 +358,10 @@ class NoiseSuppressor:
         n_out = len(x)
         self._in = np.concatenate([self._in, x])
         while len(self._in) >= self.N:
-            seg = self._in[:self.N]
-            self._in = self._in[self.HOP:]
+            seg = self._in[: self.N]
+            self._in = self._in[self.HOP :]
             X = np.fft.rfft(seg * self.w)
-            P = (X.real ** 2 + X.imag ** 2) + 1e-10
+            P = (X.real**2 + X.imag**2) + 1e-10
             if self._noise is None:
                 self._noise = P.copy()
             else:
@@ -369,17 +379,17 @@ class NoiseSuppressor:
             elif self._snr_ratio < self.speech_start:
                 floor = self.floor_gain
             else:
-                lift = np.clip((self._snr_ratio - self.speech_start) /
-                               (self.speech_ratio - self.speech_start), 0.0, 1.0)
+                lift = np.clip(
+                    (self._snr_ratio - self.speech_start) / (self.speech_ratio - self.speech_start), 0.0, 1.0
+                )
                 floor = self.floor_gain + (self.speech_floor - self.floor_gain) * lift
             g = 1.0 - self.oversub * self._noise / (P + 1e-12)
             g = np.clip(g, floor, 1.0).astype(np.float32)
             self._gain = self.smooth * self._gain + (1.0 - self.smooth) * g
             y = np.fft.irfft(X * self._gain, n=self.N).astype(np.float32) * self.w
             self._ola += y
-            self._ready = np.concatenate([self._ready, self._ola[:self.HOP]])
-            self._ola = np.concatenate(
-                [self._ola[self.HOP:], np.zeros(self.HOP, dtype=np.float32)])
+            self._ready = np.concatenate([self._ready, self._ola[: self.HOP]])
+            self._ola = np.concatenate([self._ola[self.HOP :], np.zeros(self.HOP, dtype=np.float32)])
         if len(self._ready) >= n_out:
             out = self._ready[:n_out]
             self._ready = self._ready[n_out:]
@@ -393,8 +403,7 @@ class NoiseSuppressor:
 class AGC:
     """自动增益：把语音拉到目标 RMS；压得快、放得慢，末端软限幅。"""
 
-    def __init__(self, target_rms: float = 0.05, min_gain: float = 0.5,
-                 max_gain: float = 16.0):
+    def __init__(self, target_rms: float = 0.05, min_gain: float = 0.5, max_gain: float = 16.0):
         self.target_rms = float(target_rms)
         self.min_gain = float(min_gain)
         self.max_gain = float(max_gain)
@@ -407,12 +416,12 @@ class AGC:
         x = np.asarray(samples, dtype=np.float32)
         if x.size == 0:
             return x
-        rms = float(np.sqrt(np.mean(x ** 2) + 1e-12))
+        rms = float(np.sqrt(np.mean(x**2) + 1e-12))
         desired = float(np.clip(self.target_rms / rms, self.min_gain, self.max_gain))
         if desired < self._gain:
-            self._gain = 0.5 * self._gain + 0.5 * desired      # 太响：快速压回来
+            self._gain = 0.5 * self._gain + 0.5 * desired  # 太响：快速压回来
         else:
-            self._gain = 0.75 * self._gain + 0.25 * desired     # 太轻：放开（不无限放大底噪）
+            self._gain = 0.75 * self._gain + 0.25 * desired  # 太轻：放开（不无限放大底噪）
         y = x * self._gain
         peak = float(np.max(np.abs(y))) if y.size else 0.0
         if peak > 0.98:
@@ -430,6 +439,6 @@ def enhance_pcm(pcm: bytes) -> bytes:
     out = np.zeros_like(x)
     step = 512
     for i in range(0, len(x), step):
-        seg = x[i:i + step]
-        out[i:i + len(seg)] = agc.process(ns.process(seg))
+        seg = x[i : i + step]
+        out[i : i + len(seg)] = agc.process(ns.process(seg))
     return _to_bytes(out)

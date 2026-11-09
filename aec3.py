@@ -40,8 +40,7 @@ def _dll_dir() -> Path:
 class AEC3:
     """AEC3 包装：process(near, far) -> (clean, True)。"""
 
-    def __init__(self, sr: int = 16000, frame: int = FRAME10,
-                 dll_dir: str = ""):
+    def __init__(self, sr: int = 16000, frame: int = FRAME10, dll_dir: str = ""):
         self.sr = int(sr)
         self.frame = int(frame)
         self.delay = 0
@@ -54,11 +53,12 @@ class AEC3:
         self._lib = ctypes.CDLL(str(d / "aec3_wrap.dll"))
         self._lib.wap_create.restype = ctypes.c_void_p
         self._lib.wap_create.argtypes = [ctypes.c_int, ctypes.c_int]
-        self._lib.wap_process_far.argtypes = [ctypes.c_void_p,
-                                              ctypes.POINTER(ctypes.c_int16)]
+        self._lib.wap_process_far.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int16)]
         self._lib.wap_process_near.argtypes = [
-            ctypes.c_void_p, ctypes.POINTER(ctypes.c_int16),
-            ctypes.POINTER(ctypes.c_int16)]
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_int16),
+            ctypes.POINTER(ctypes.c_int16),
+        ]
         self._lib.wap_set_stream_delay.argtypes = [ctypes.c_void_p, ctypes.c_int]
         self._lib.wap_destroy.argtypes = [ctypes.c_void_p]
         self._h = self._lib.wap_create(self.sr, 1)

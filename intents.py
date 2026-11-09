@@ -19,11 +19,9 @@ Rule = Callable[[str, str], Intent | None]
 _PUNCT = re.compile(r"[\s，。！？、,.!?;；:：\"'“”‘’（）()《》<>~·\-—_]+")
 
 #: 句首礼貌词，按长度从长到短剥离（顺序保留原实现）。
-_POLITE = ["帮我", "请帮我", "请", "麻烦", "帮忙", "给我", "把", "一下", "一点",
-           "好吗", "行吗", "吧"]
+_POLITE = ["帮我", "请帮我", "请", "麻烦", "帮忙", "给我", "把", "一下", "一点", "好吗", "行吗", "吧"]
 
-_CN_DIGITS = {"零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
-              "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_CN_DIGITS = {"零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
 _CN_UNITS = {"十": 10, "百": 100, "千": 1000}
 
 #: 音量数字：阿拉伯数字 1~3 位，或中文数字。
@@ -66,7 +64,7 @@ def cn2int(s: str):
 def _strip_polite(text: str) -> str:
     for word in _POLITE:
         if text.startswith(word):
-            text = text[len(word):]
+            text = text[len(word) :]
     return text
 
 
@@ -96,11 +94,14 @@ def _volume_intent(action: str, raw: str, value: int | None = None) -> Intent:
 # 顺序与重构前的 if 链一致，改动顺序前先跑 tests/test_intents.py。
 # ---------------------------------------------------------------------------
 
+
 def _rule_browser_search(t: str, raw: str) -> Intent | None:
     """「用/打开 谷歌浏览器 搜索 X」——指定浏览器搜索。"""
     m = re.match(
         r"^(?:用|打开|使用|拿)?(谷歌浏览器|谷歌|chrome|Chrome|edge|Edge)(?:浏览器)?"
-        r"(?:搜索|搜一下|搜|查一下|查|百度一下)(.+)$", t)
+        r"(?:搜索|搜一下|搜|查一下|查|百度一下)(.+)$",
+        t,
+    )
     if not m:
         return None
     browser = "edge" if m.group(1).lower() == "edge" else "chrome"
@@ -289,8 +290,7 @@ def _rule_type_text(t: str, raw: str) -> Intent | None:
     keyword = next((w for w in _TYPE_VERBS if t.startswith(w)), None)
     if not keyword:
         return None
-    return {"action": "type_text",
-            "text": _strip_polite(raw)[len(keyword):].strip(), "raw": raw}
+    return {"action": "type_text", "text": _strip_polite(raw)[len(keyword) :].strip(), "raw": raw}
 
 
 def _rule_open_item(t: str, raw: str) -> Intent | None:
@@ -316,7 +316,7 @@ def _rule_close_app(t: str, raw: str) -> Intent | None:
     verb = next((v for v in _CLOSE_VERBS if t.startswith(v)), None)
     if not verb:
         return None
-    app = _match_app(t) or _strip_polite(raw)[len(verb):].strip()
+    app = _match_app(t) or _strip_polite(raw)[len(verb) :].strip()
     if not app:
         return None
     return {"action": "close_app", "name": app, "raw": raw}
@@ -326,7 +326,7 @@ def _rule_open_app(t: str, raw: str) -> Intent | None:
     for verb in _APP_VERBS:
         if not (t.startswith(verb) and len(t) > len(verb)):
             continue
-        rest = _strip_polite(raw)[len(verb):].strip()
+        rest = _strip_polite(raw)[len(verb) :].strip()
         rest = re.sub(r"[，。！？、,.!?；;：:\s]+$", "", rest)
         rest = re.sub(r"^(一个|一台|一份)", "", rest)
         rest = re.sub(r"(一下|吧|啊|呢)$", "", rest)
@@ -338,15 +338,21 @@ def _rule_open_app(t: str, raw: str) -> Intent | None:
 
 def _rule_search(t: str, raw: str) -> Intent | None:
     browser = ""
-    for tag, name in (("谷歌浏览器", "chrome"), ("chrome", "chrome"), ("Chrome", "chrome"),
-                      ("谷歌", "chrome"), ("edge", "edge"), ("Edge", "edge")):
+    for tag, name in (
+        ("谷歌浏览器", "chrome"),
+        ("chrome", "chrome"),
+        ("Chrome", "chrome"),
+        ("谷歌", "chrome"),
+        ("edge", "edge"),
+        ("Edge", "edge"),
+    ):
         if tag in raw:
             browser = name
             break
     verb = next((v for v in _SEARCH_VERBS if t.startswith(v)), None)
     if not verb:
         return None
-    term = _strip_polite(raw)[len(verb):].strip()
+    term = _strip_polite(raw)[len(verb) :].strip()
     term = re.sub(r"^(一下|下)", "", term)
     term = re.sub(r"^(用)?(谷歌浏览器|谷歌|chrome|Chrome|edge|Edge)", "", term).strip()
     if not term:
@@ -415,7 +421,7 @@ def parse(text: str) -> Intent:
     # 去掉句首的唤醒词（“小助手打开记事本”）
     for wake in WAKE_WORDS:
         if t.startswith(wake):
-            t = t[len(wake):]
+            t = t[len(wake) :]
             break
 
     if not t:

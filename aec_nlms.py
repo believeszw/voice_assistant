@@ -23,14 +23,13 @@ FRAME = 256
 
 
 class AEC:
-    def __init__(self, sr: int = SR, frame: int = FRAME,
-                 mu: float = 0.25, dtd_ratio: float = 2.5):
+    def __init__(self, sr: int = SR, frame: int = FRAME, mu: float = 0.25, dtd_ratio: float = 2.5):
         self.sr = sr
         self.B = frame
-        self.mu = mu                # 增益平滑速度（保留接口，值越大跟得越快）
+        self.mu = mu  # 增益平滑速度（保留接口，值越大跟得越快）
         self.dtd_ratio = dtd_ratio
 
-        self._far_buf = np.zeros(0, dtype=np.float32)   # 参考信号累积（按延迟取块）
+        self._far_buf = np.zeros(0, dtype=np.float32)  # 参考信号累积（按延迟取块）
         # 环形缓冲留 2 秒：延迟估计要先攒够 1.5 秒数据再锁
         self._near_ring = deque(maxlen=max(16, sr * 2 // frame))
         self._far_ring = deque(maxlen=max(16, sr * 2 // frame))
@@ -39,7 +38,7 @@ class AEC:
         self.delay = 0
         self._delay_locked = False
 
-        self._gain = 0.0            # 当前增益估计
+        self._gain = 0.0  # 当前增益估计
         self._near_pow = 1e-8
         self._far_pow = 1e-8
         self._res_hist = deque(maxlen=100)
@@ -54,12 +53,11 @@ class AEC:
             return
         win = int(self.sr * 0.4)  # 0.4 秒窗：覆盖本机约 0.31s 链路延迟，又能早点锁
         # 至少攒够 1.5 秒数据再估：刚起播时窗里只有很短的播放片段，容易锁到假延迟
-        if len(self._near_ring) * self.B < int(self.sr * 0.4) \
-                or len(self._far_ring) * self.B < int(self.sr * 0.4):
+        if len(self._near_ring) * self.B < int(self.sr * 0.4) or len(self._far_ring) * self.B < int(self.sr * 0.4):
             return
         near = np.concatenate(list(self._near_ring))[-win:]
         far = np.concatenate(list(self._far_ring))[-win:]
-        if float(np.mean(far ** 2)) < 1e-7 or float(np.mean(near ** 2)) < 1e-7:
+        if float(np.mean(far**2)) < 1e-7 or float(np.mean(near**2)) < 1e-7:
             return
         spec = np.fft.rfft(near) * np.conj(np.fft.rfft(far))
         cc = np.fft.irfft(spec / (np.abs(spec) + 1e-9), win)
@@ -73,13 +71,12 @@ class AEC:
         # 延迟不能超过参考缓冲，且对齐后要真有相关性，否则不锁
         if lag >= win - self.B:
             return
-        ref0 = far[0:win - lag]
+        ref0 = far[0 : win - lag]
         near0 = near[lag:]
         m = min(len(ref0), len(near0))
         if m <= 0:
             return
-        denom = (float(np.sqrt(np.dot(ref0[:m], ref0[:m])))
-                 * float(np.sqrt(np.dot(near0[:m], near0[:m]))) + 1e-12)
+        denom = float(np.sqrt(np.dot(ref0[:m], ref0[:m]))) * float(np.sqrt(np.dot(near0[:m], near0[:m]))) + 1e-12
         corr = float(np.dot(ref0[:m], near0[:m])) / denom
         if corr < 0.15:
             return
@@ -92,15 +89,15 @@ class AEC:
             # 取中位数，避免双讲/用户语音把初始增益带偏。
             d = min(self.delay, len(far) - 1, len(near) - 1)
             if d > 0:
-                r0 = far[0:len(far) - d]
+                r0 = far[0 : len(far) - d]
                 n0 = near[d:]
                 mm = min(len(r0), len(n0))
                 gains = []
                 for k in range(0, mm - 256, 256):
-                    rk = r0[k:k + 256]
-                    nk = n0[k:k + 256]
+                    rk = r0[k : k + 256]
+                    nk = n0[k : k + 256]
                     rp = float(np.dot(rk, rk))
-                    if rp > 1e-6 and float(np.mean(rk ** 2)) > 1e-4:
+                    if rp > 1e-6 and float(np.mean(rk**2)) > 1e-4:
                         gains.append(float(np.dot(nk, rk) / rp))
                 if gains:
                     self._gain = min(max(float(np.median(gains)), 0.0), 2.0)
@@ -110,20 +107,18 @@ class AEC:
         self._far_buf = np.concatenate([self._far_buf, far_block])
         need = self.delay + self.B
         if len(self._far_buf) >= need:
-            ref = self._far_buf[len(self._far_buf) - need:
-                                len(self._far_buf) - self.delay]
+            ref = self._far_buf[len(self._far_buf) - need : len(self._far_buf) - self.delay]
         else:
             ref = np.zeros(self.B, dtype=np.float32)
         if len(self._far_buf) > self.sr:
-            self._far_buf = self._far_buf[-self.sr:]
+            self._far_buf = self._far_buf[-self.sr :]
         return ref
 
     # ------------------------------------------------------------------
     def process(self, near_block, far_block=None):
         self._frames += 1
         near = np.asarray(near_block, dtype=np.float32).ravel()
-        far = np.asarray(np.zeros(self.B, np.float32) if far_block is None
-                         else far_block, dtype=np.float32).ravel()
+        far = np.asarray(np.zeros(self.B, np.float32) if far_block is None else far_block, dtype=np.float32).ravel()
 
         self._near_ring.append(near.copy())
         self._far_ring.append(far.copy())
@@ -138,16 +133,15 @@ class AEC:
         echo = self._gain * ref
         e = near - echo
 
-        near_pow = float(np.mean(near ** 2) + 1e-12)
-        far_pow = float(np.mean(ref ** 2) + 1e-12)
-        raw_pow = float(np.mean(e ** 2) + 1e-12)
+        near_pow = float(np.mean(near**2) + 1e-12)
+        far_pow = float(np.mean(ref**2) + 1e-12)
+        raw_pow = float(np.mean(e**2) + 1e-12)
         self._near_pow = 0.9 * self._near_pow + 0.1 * near_pow
         self._far_pow = 0.9 * self._far_pow + 0.1 * far_pow
 
         # 双讲检测：残差比最近残差低位明显抬高 → 用户开口（冻结增益）
         dtd = False
-        if (self._delay_locked and self._frames > 80 and far_pow > 1e-6
-                and len(self._res_hist) >= 20):
+        if self._delay_locked and self._frames > 80 and far_pow > 1e-6 and len(self._res_hist) >= 20:
             base = float(np.percentile(self._res_hist, 20))
             dtd = base > 1e-9 and raw_pow > self.dtd_ratio * base
         self.dtd = dtd

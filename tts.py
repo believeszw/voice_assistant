@@ -54,12 +54,14 @@ def _quick_wav():
 try:
     import pythoncom
     import win32com.client
+
     _HAS_SAPI = True
 except Exception:  # pragma: no cover
     _HAS_SAPI = False
 
 try:
     import sounddevice as sd
+
     _HAS_SD = True
 except Exception:  # pragma: no cover
     _HAS_SD = False
@@ -92,16 +94,17 @@ def _ps_render_wav(text: str) -> bytes:
     venv 里 pywin32 的 SAPI SpFileStream 偶发 0x80045040（不支持的格式），
     System.Speech 走的是同一个 SAPI 引擎，但不需要 COM 属性绑定，稳定得多。
     """
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "tools", "ps_tts.ps1")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools", "ps_tts.ps1")
     if not os.path.exists(script):
         return b""
     path = _tmp_wav("dsh_ps")
     try:
         subprocess.run(
-            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-             "-File", script, "-Out", path, "-Text", text],
-            check=False, capture_output=True, timeout=90)
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Out", path, "-Text", text],
+            check=False,
+            capture_output=True,
+            timeout=90,
+        )
         with open(path, "rb") as f:
             return f.read()
     except Exception as exc:  # pragma: no cover
@@ -140,7 +143,7 @@ def _sapi_render_wav(text: str, voice) -> bytes:
             old = voice.AudioOutputStream
             stream.Open(path, 3, False)  # SSFMCreateForWrite
             voice.AudioOutputStream = stream
-            voice.Speak(text, 0)         # 同步渲染到文件
+            voice.Speak(text, 0)  # 同步渲染到文件
             ok = True
         except Exception as exc:  # pragma: no cover
             _logger.warning("[TTS] SAPI 渲染失败，改用 System.Speech:", str(exc)[:120])
@@ -175,8 +178,7 @@ def _remember(text: str, wav: bytes):
             _CACHE.pop(old, None)
 
 
-def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
-              pause_event: threading.Event = None):
+def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None, pause_event: threading.Event = None):
     """播放 wav 字节；stop_event 置位时停止，pause_event 置位时暂停（可恢复）。
 
     far_sink: 可选回调，按块把「实际正在播的参考 PCM」交给回声抑制模块。
@@ -200,8 +202,7 @@ def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
     # AEC 只认 16k 参考；云端 TTS 可能是 24k，按块重采样后推给它
     if far_sink is not None and rate != 16000:
         n = max(1, int(len(data) * 16000 / rate))
-        ref_data = np.interp(np.linspace(0, len(data) - 1, n),
-                             np.arange(len(data)), data)
+        ref_data = np.interp(np.linspace(0, len(data) - 1, n), np.arange(len(data)), data)
     else:
         ref_data = data
     block = max(1, int(rate * 0.05))
@@ -233,7 +234,7 @@ def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
                 time.sleep(0.02)
                 continue
             n = min(block, len(data) - i)
-            chunk = data[i:i + n]
+            chunk = data[i : i + n]
             stream.write(chunk.reshape(-1, 1))
             if far_sink is not None:
                 try:
@@ -241,8 +242,7 @@ def _play_wav(wav_bytes: bytes, stop_event: threading.Event, far_sink=None,
                     j1 = max(j0 + 1, int((i + n) * 16000 / rate))
                     seg = ref_data[j0:j1]
                     if len(seg):
-                        pending_refs.append(np.clip(seg * 32768.0, -32768,
-                                                    32767).astype(np.int16).tobytes())
+                        pending_refs.append(np.clip(seg * 32768.0, -32768, 32767).astype(np.int16).tobytes())
                         # 延迟 ref_delay_blocks 个块再推，使参考时间线与听到的时刻一致
                         while len(pending_refs) > ref_delay_blocks:
                             _emit_ref(pending_refs.popleft())
@@ -266,7 +266,7 @@ class Speaker:
         self._stop = threading.Event()
         self._pause = threading.Event()
         self._playing = False
-        self.far_sink = None          # 由 Assistant 注入：把播放 PCM 喂给 AEC
+        self.far_sink = None  # 由 Assistant 注入：把播放 PCM 喂给 AEC
         self._busy = threading.Lock()
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._thread.start()
@@ -327,8 +327,7 @@ class Speaker:
         if wav is None:
             try:
                 # 弱网时整段合成会拖很久：超过 TTS_CLOUD_TIMEOUT 就放弃，交给端侧
-                wav = llm.tts_wav(text, voice=TTS_VOICE_NAME, style=TTS_STYLE,
-                                  timeout=TTS_CLOUD_TIMEOUT)
+                wav = llm.tts_wav(text, voice=TTS_VOICE_NAME, style=TTS_STYLE, timeout=TTS_CLOUD_TIMEOUT)
             except Exception as exc:
                 _logger.warning("[TTS] 云端合成失败/超时，改用端侧:", str(exc)[:120])
                 return False
@@ -395,9 +394,11 @@ class Speaker:
             _remember(text, wav)
             stats = tts_local.last_stats()
             if stats.get("synth_ms"):
-                _logger.info(f"[TTS] 端侧合成 {stats['synth_ms']:.0f} ms"
-                      f"（{stats.get('backend', 'local')}，{stats.get('text_len', 0)} 字 → "
-                      f"{stats.get('audio_seconds', 0):.1f} s 音频）")
+                _logger.info(
+                    f"[TTS] 端侧合成 {stats['synth_ms']:.0f} ms"
+                    f"（{stats.get('backend', 'local')}，{stats.get('text_len', 0)} 字 → "
+                    f"{stats.get('audio_seconds', 0):.1f} s 音频）"
+                )
         self._playing = True
         try:
             _play_wav(wav, self._stop, self.far_sink, self._pause)

@@ -19,12 +19,13 @@ python -m pip install -r requirements-dev.txt
 
 ```bat
 python -m ruff check .
+python -m ruff format --check .      :: 格式检查；提交前用 `ruff format .` 统一格式
 python -m pytest -m "not audio"      :: 纯逻辑用例，不需要声卡
 python -m pytest                      :: Windows 有音频依赖时跑全量（含 audio 标记）
 tools\run_regress.bat                 :: 本机声学/端到端回归
 ```
 
-CI 只跑 `ruff check` + `pytest -m "not audio"`，所以**改动核心逻辑时请补一个不依赖
+CI 只跑 `ruff check` + `ruff format --check` + `pytest -m "not audio"`，所以**改动核心逻辑时请补一个不依赖
 声卡的用例**；涉及音频路径的改动请在 PR 里贴 `tools/run_regress.bat` 的输出。
 
 ## 代码约定

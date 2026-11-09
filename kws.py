@@ -22,8 +22,7 @@ SR = 16000
 
 
 class WakeWord:
-    def __init__(self, model_dir=None, keywords_file=None, threshold=0.25,
-                 score=1.0, num_threads=2, log=print):
+    def __init__(self, model_dir=None, keywords_file=None, threshold=0.25, score=1.0, num_threads=2, log=print):
         self.ok = False
         self.err = ""
         self.log = log

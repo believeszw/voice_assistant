@@ -20,8 +20,11 @@ from pathlib import Path
 
 import requests
 
-CRED_FILE = Path(os.environ.get("DSH_CREDENTIALS", "")) if os.environ.get("DSH_CREDENTIALS") else (
-    Path.home() / ".dsh" / ".credentials.yaml")
+CRED_FILE = (
+    Path(os.environ.get("DSH_CREDENTIALS", ""))
+    if os.environ.get("DSH_CREDENTIALS")
+    else (Path.home() / ".dsh" / ".credentials.yaml")
+)
 
 BASE_URL = os.environ.get("MIMO_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1")
 ASR_MODEL = os.environ.get("MIMO_ASR_MODEL", "mimo-v2.5-asr")
@@ -95,13 +98,17 @@ def asr_wav(wav_bytes: bytes, language: str = "zh") -> str:
     b64 = base64.b64encode(wav_bytes).decode("ascii")
     body = {
         "model": ASR_MODEL,
-        "messages": [{
-            "role": "user",
-            "content": [{
-                "type": "input_audio",
-                "input_audio": {"data": f"data:audio/wav;base64,{b64}"},
-            }],
-        }],
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": f"data:audio/wav;base64,{b64}"},
+                    }
+                ],
+            }
+        ],
         "asr_options": {"language": language},
     }
     return _message_text(_post(body, timeout=(5, 60)))
@@ -132,11 +139,38 @@ def tts_wav(text: str, voice: str = "", style: str = "", timeout: float = None) 
 
 # ---------------------------------------------------------------- LLM
 ACTIONS = {
-    "open_app", "close_app", "volume_up", "volume_down", "volume_set", "volume_max",
-    "volume_get", "mute", "unmute", "media_play_pause", "media_next", "media_prev",
-    "screenshot", "lock", "sleep", "restart", "shutdown", "cancel_shutdown", "search",
-    "open_url", "time", "date", "system_info", "copy_text", "read_clipboard",
-    "type_text", "show_desktop", "open_folder", "help", "exit", "chat", "unknown",
+    "open_app",
+    "close_app",
+    "volume_up",
+    "volume_down",
+    "volume_set",
+    "volume_max",
+    "volume_get",
+    "mute",
+    "unmute",
+    "media_play_pause",
+    "media_next",
+    "media_prev",
+    "screenshot",
+    "lock",
+    "sleep",
+    "restart",
+    "shutdown",
+    "cancel_shutdown",
+    "search",
+    "open_url",
+    "time",
+    "date",
+    "system_info",
+    "copy_text",
+    "read_clipboard",
+    "type_text",
+    "show_desktop",
+    "open_folder",
+    "help",
+    "exit",
+    "chat",
+    "unknown",
 }
 
 INTENT_SYSTEM = """你是电脑语音助手的意图解析器。把用户说的一句话解析成一个 JSON，只输出 JSON，不要解释、不要 Markdown。

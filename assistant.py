@@ -65,10 +65,35 @@ _CLAUSE_PREFIX = re.compile(r"^(?:再|然后|接着|并且|并|之后)\s*")
 # 也不该触发闲聊——否则一次演示会被这种噪声吃掉一轮对话额度。
 _NOISE_STRIP = re.compile(r"[\s，。,.!?！？、；;：:…~～\"'“”‘’()（）\[\]【】]+")
 _NOISE_WORDS = {
-    "yeah", "yes", "yep", "ok", "okay", "hi", "hello", "hey", "fine",
-    "thanks", "thank", "thankyou", "you", "i",
-    "嗯", "啊", "哦", "呃", "唔", "诶", "哎", "唉", "呀", "哈", "呵", "嘿",
-    "那个", "这个", "好的",
+    "yeah",
+    "yes",
+    "yep",
+    "ok",
+    "okay",
+    "hi",
+    "hello",
+    "hey",
+    "fine",
+    "thanks",
+    "thank",
+    "thankyou",
+    "you",
+    "i",
+    "嗯",
+    "啊",
+    "哦",
+    "呃",
+    "唔",
+    "诶",
+    "哎",
+    "唉",
+    "呀",
+    "哈",
+    "呵",
+    "嘿",
+    "那个",
+    "这个",
+    "好的",
 }
 
 
@@ -130,7 +155,7 @@ def _take_delay(text: str):
     if value is None:
         return 0.0, text
     unit = 60 if "分" in m.group(2) else 1
-    return float(value * unit), text[m.end():].strip()
+    return float(value * unit), text[m.end() :].strip()
 
 
 def split_compound(text: str):
@@ -302,7 +327,7 @@ class Assistant:
         idx = np.where(rms > thr)[0]
         start = int(idx[0]) if idx.size else n - 1
         start = max(0, start - 1)  # 多留一帧，避免切掉起音
-        return x[start * frame:].tobytes()
+        return x[start * frame :].tobytes()
 
     def _capture_after_barge(self, seconds: float, confirm_pcm: bytes = b"") -> bytes:
         """打断后继续收一小段，与预录拼成下一句的开头（补回被切掉的字）。
@@ -460,9 +485,11 @@ class Assistant:
                 return None
             if intent:
                 stats = nlu_local.last_stats()
-                self.log(f"[NLU] 端侧 {stats.get('mode', '')} {stats.get('ms', 0):.0f} ms "
-                         f"prompt={stats.get('prompt_tokens')} "
-                         f"gen={stats.get('completion_tokens')}")
+                self.log(
+                    f"[NLU] 端侧 {stats.get('mode', '')} {stats.get('ms', 0):.0f} ms "
+                    f"prompt={stats.get('prompt_tokens')} "
+                    f"gen={stats.get('completion_tokens')}"
+                )
                 return intent
         return None
 
@@ -597,8 +624,7 @@ class Assistant:
             return ans in ("确认", "确定", "是", "好", "可以", "y", "yes")
         self.say(question + "，说“确认”或者“取消”。")
         with audio.Mic() as mic:
-            pcm, _, ok = audio.record_utterance(
-                mic, max_seconds=4, silence_seconds=0.7, start_timeout=4)
+            pcm, _, ok = audio.record_utterance(mic, max_seconds=4, silence_seconds=0.7, start_timeout=4)
         if not ok:
             return False
         text, _ = self._asr(pcm)
@@ -648,8 +674,7 @@ class Assistant:
             self.kws = None
             self.log(f"[KWS] 加载失败: {str(exc)[:120]}")
         wake_ok = bool(self.kws and self.kws.available())
-        _logger.info(f"[唤醒] KWS 本地模型: {'可用' if wake_ok else '不可用（退回文本匹配）'}"
-                     "；热键 Ctrl+Alt+Space")
+        _logger.info(f"[唤醒] KWS 本地模型: {'可用' if wake_ok else '不可用（退回文本匹配）'}；热键 Ctrl+Alt+Space")
         _logger.info(f"[唤醒词] {' / '.join(WAKE_WORDS)}")
         # 提示语里不要念出唤醒词本身，否则会被自己的扬声器触发
         self.say("语音助手已启动。说唤醒词，或者按 Ctrl Alt 空格 叫我。")
@@ -860,6 +885,7 @@ class Assistant:
             turn += 1
         self.say("先聊到这，需要时再叫我。")
         self._set_state("IDLE")
+
 
 def main():
     _setup_logging()

@@ -78,29 +78,45 @@ read_clipboard, type_text, show_desktop, open_folder, help, exit, chat, unknown
 
 def _tool_defs():
     """function calling 的工具清单（JSON Schema）。参数与 _SYSTEM 保持同一套。"""
-    no_args = [a for a in sorted(ACTIONS)
-               if a not in ("open_app", "close_app", "open_folder", "volume_set",
-                            "search", "open_url", "copy_text", "type_text", "unknown")]
+    no_args = [
+        a
+        for a in sorted(ACTIONS)
+        if a
+        not in (
+            "open_app",
+            "close_app",
+            "open_folder",
+            "volume_set",
+            "search",
+            "open_url",
+            "copy_text",
+            "type_text",
+            "unknown",
+        )
+    ]
 
     def fn(name, desc, props=None, required=None):
         params = {"type": "object", "properties": props or {}, "additionalProperties": False}
         if required:
             params["required"] = required
-        return {"type": "function", "function": {"name": name, "description": desc,
-                                                 "parameters": params}}
+        return {"type": "function", "function": {"name": name, "description": desc, "parameters": params}}
 
     tools = [fn(a, f"执行 {a}") for a in no_args]
     tools += [
-        fn("open_app", "打开应用",
-           {"name": {"type": "string", "description": "应用名，如 记事本/浏览器/微信"}},
-           ["name"]),
+        fn(
+            "open_app",
+            "打开应用",
+            {"name": {"type": "string", "description": "应用名，如 记事本/浏览器/微信"}},
+            ["name"],
+        ),
         fn("close_app", "关闭应用", {"name": {"type": "string", "description": "应用名"}}, ["name"]),
-        fn("open_folder", "打开文件夹",
-           {"name": {"type": "string", "description": "文件夹名，如 下载/文档/桌面"}},
-           ["name"]),
-        fn("volume_set", "把音量设成指定值",
-           {"value": {"type": "integer", "minimum": 0, "maximum": 100}},
-           ["value"]),
+        fn(
+            "open_folder",
+            "打开文件夹",
+            {"name": {"type": "string", "description": "文件夹名，如 下载/文档/桌面"}},
+            ["name"],
+        ),
+        fn("volume_set", "把音量设成指定值", {"value": {"type": "integer", "minimum": 0, "maximum": 100}}, ["value"]),
         fn("search", "用浏览器搜索", {"term": {"type": "string", "description": "搜索词"}}, ["term"]),
         fn("open_url", "打开网址", {"url": {"type": "string", "description": "网址"}}, ["url"]),
         fn("copy_text", "复制文字到剪贴板", {"text": {"type": "string"}}, ["text"]),
@@ -156,19 +172,31 @@ def _ensure_server() -> bool:
             return False
         cmd = [
             str(config.NLU_LOCAL_SERVER),
-            "-m", str(Path(config.NLU_LOCAL_DIR) / config.NLU_LOCAL_MODEL),
-            "--host", "127.0.0.1", "--port", str(_PORT),
-            "-c", "2048", "-t", str(config.NLU_LOCAL_THREADS),
-            "-ngl", str(config.NLU_LOCAL_NGL),
+            "-m",
+            str(Path(config.NLU_LOCAL_DIR) / config.NLU_LOCAL_MODEL),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(_PORT),
+            "-c",
+            "2048",
+            "-t",
+            str(config.NLU_LOCAL_THREADS),
+            "-ngl",
+            str(config.NLU_LOCAL_NGL),
             "--log-disable",
         ]
         try:
             _LOG.parent.mkdir(parents=True, exist_ok=True)
             log_fh = open(_LOG, "ab")
             t0 = time.time()
-            _proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT,
-                                     stdin=subprocess.DEVNULL,
-                                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            _proc = subprocess.Popen(
+                cmd,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
             _started_at = t0
         except Exception as exc:  # pragma: no cover
             _ERR = f"启动失败 {type(exc).__name__}: {str(exc)[:120]}"
@@ -245,20 +273,21 @@ def _chat(text: str, history=None, timeout: float = None) -> dict:
             "json_schema": {"name": "intent", "strict": True, "schema": _INTENT_SCHEMA},
         }
     t0 = time.time()
-    resp = requests.post(_BASE + "/v1/chat/completions", json=body,
-                         timeout=timeout or config.NLU_LOCAL_TIMEOUT)
+    resp = requests.post(_BASE + "/v1/chat/completions", json=body, timeout=timeout or config.NLU_LOCAL_TIMEOUT)
     resp.raise_for_status()
     data = resp.json()
     ms = (time.time() - t0) * 1000.0
     msg = (data.get("choices") or [{}])[0].get("message") or {}
     timings = data.get("timings") or {}
-    _LAST.update({
-        "mode": mode,
-        "ms": ms,
-        "prompt_tokens": int(timings.get("prompt_n") or 0),
-        "completion_tokens": int(timings.get("predicted_n") or 0),
-        "error": "",
-    })
+    _LAST.update(
+        {
+            "mode": mode,
+            "ms": ms,
+            "prompt_tokens": int(timings.get("prompt_n") or 0),
+            "completion_tokens": int(timings.get("predicted_n") or 0),
+            "error": "",
+        }
+    )
     if mode == "tool_calls" and msg.get("tool_calls"):
         args = msg["tool_calls"][0].get("function", {}).get("arguments") or "{}"
         obj = json.loads(args)
@@ -303,8 +332,7 @@ def validate(obj: dict, text: str = "") -> dict:
         # 允许 chat：闲聊/知识问答交给云端或兜底话术；unknown 交给上层继续兜底
         if action != "chat":
             return {}
-    if (action.startswith("volume_") or action in ("mute", "unmute")) and text \
-            and not _volume_context_ok(text):
+    if (action.startswith("volume_") or action in ("mute", "unmute")) and text and not _volume_context_ok(text):
         return {}
     out = {"action": action}
     if action in ("open_app", "close_app"):

@@ -38,6 +38,7 @@ class TwoPassASR:
         self._partial = ""
         self._pcm = bytearray()
         import importlib.util
+
         if importlib.util.find_spec("sherpa_onnx") is None:  # pragma: no cover
             self.err = "sherpa_onnx 未安装"
             return

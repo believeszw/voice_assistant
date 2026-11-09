@@ -68,6 +68,7 @@ python assistant.py --text
 python -m pip install -r requirements.txt -r requirements-dev.txt
 
 python -m ruff check .                 # 风格/静态检查（核心模块 + tests）
+python -m ruff format --check .        # 格式检查；提交前 `python -m ruff format .` 统一格式
 python -m pytest -m "not audio"        # 纯逻辑用例，无需声卡（CI 跑的也是这组）
 python -m pytest                       # Windows + 音频依赖就位时跑全量
 tools\run_regress.bat                  # 本机声学/端到端回归（AEC、唤醒、打断、复合指令）

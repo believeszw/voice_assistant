@@ -117,12 +117,15 @@ class EnergyVAD:
             self.floor = 0.95 * self.floor + 0.05 * level
 
 
-def record_utterance(mic: Mic, max_seconds: float = 8.0,
-                     silence_seconds: float = 0.8,
-                     start_timeout: float = 3.0,
-                     vad: EnergyVAD = None,
-                     on_block=None,
-                     pre_pcm: bytes = b""):
+def record_utterance(
+    mic: Mic,
+    max_seconds: float = 8.0,
+    silence_seconds: float = 0.8,
+    start_timeout: float = 3.0,
+    vad: EnergyVAD = None,
+    on_block=None,
+    pre_pcm: bytes = b"",
+):
     """录一句话：等到有声音，再等到静音结束。返回 (pcm_bytes, seconds, started)。
 
     on_block(block)：语音开始后每块回调一次，用于流式识别出草稿。
@@ -178,6 +181,7 @@ def record_utterance(mic: Mic, max_seconds: float = 8.0,
 
 def save_wav(path: str, pcm: bytes, samplerate: int = SAMPLE_RATE):
     import wave
+
     with wave.open(path, "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)

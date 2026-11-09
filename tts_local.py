@@ -55,18 +55,26 @@ except Exception:  # pragma: no cover
 _PIPER_DIR = Path(config.TTS_LOCAL_DIR).parent / "piper-zh_CN-huayan-medium"
 _RULE_FSTS = ("date.fst", "number.fst", "phone.fst", "new_heteronym.fst")
 
-_VOICE = None          # PiperVoice
-_TTS = None            # sherpa OfflineTts
+_VOICE = None  # PiperVoice
+_TTS = None  # sherpa OfflineTts
 _LOCK = threading.Lock()
 _ERR = ""
 _BACKEND = ""
 _LOAD_MS = 0.0
 _SR = 16000
-_LAST = {"backend": "", "synth_ms": 0.0, "first_chunk_ms": 0.0,
-         "audio_seconds": 0.0, "text_len": 0, "backend_load_ms": 0.0, "error": ""}
+_LAST = {
+    "backend": "",
+    "synth_ms": 0.0,
+    "first_chunk_ms": 0.0,
+    "audio_seconds": 0.0,
+    "text_len": 0,
+    "backend_load_ms": 0.0,
+    "error": "",
+}
 
 
 # ---------------------------------------------------------------- 文件与加载
+
 
 def _piper_model() -> Path | None:
     if not _PIPER_DIR.is_dir():
@@ -174,6 +182,7 @@ def _load():
 
 # ---------------------------------------------------------------- 合成
 
+
 def _piper_pcm(text: str, speed: float):
     """逐块产出 (int16 np.ndarray)，同时返回首块耗时。"""
     cfg = SynthesisConfig(length_scale=1.0 / max(0.5, min(2.0, speed)))
@@ -216,9 +225,14 @@ def synth_wav(text: str, speed: float = None) -> bytes:
             wf.setsampwidth(2)
             wf.setframerate(sr)
             wf.writeframes(pcm)
-        _LAST.update(backend=_BACKEND, synth_ms=(time.time() - t0) * 1000.0,
-                     audio_seconds=len(pcm) / 2.0 / sr, text_len=len(text),
-                     backend_load_ms=_LOAD_MS, error="")
+        _LAST.update(
+            backend=_BACKEND,
+            synth_ms=(time.time() - t0) * 1000.0,
+            audio_seconds=len(pcm) / 2.0 / sr,
+            text_len=len(text),
+            backend_load_ms=_LOAD_MS,
+            error="",
+        )
         return buf.getvalue()
     except Exception as exc:  # pragma: no cover
         _LAST.update(backend=_BACKEND, error=f"{type(exc).__name__}: {str(exc)[:120]}")
@@ -238,8 +252,14 @@ def stream(text: str, speed: float = None):
     t0 = time.time()
     if _VOICE is not None:
         for pcm in _piper_pcm(text, speed):
-            _LAST.update(backend=_BACKEND, synth_ms=(time.time() - t0) * 1000.0,
-                         audio_seconds=0.0, text_len=len(text), backend_load_ms=_LOAD_MS, error="")
+            _LAST.update(
+                backend=_BACKEND,
+                synth_ms=(time.time() - t0) * 1000.0,
+                audio_seconds=0.0,
+                text_len=len(text),
+                backend_load_ms=_LOAD_MS,
+                error="",
+            )
             yield pcm.tobytes()
         _LAST["synth_ms"] = (time.time() - t0) * 1000.0
         return

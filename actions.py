@@ -18,10 +18,20 @@ user32 = ctypes.windll.user32
 
 # ---- 虚拟键码 ----
 VK = {
-    "vol_mute": 0xAD, "vol_down": 0xAE, "vol_up": 0xAF,
-    "media_next": 0xB0, "media_prev": 0xB1, "media_stop": 0xB2,
-    "media_play": 0xB3, "win": 0x5B, "d": 0x44,
-    "ctrl": 0x11, "v": 0x56, "esc": 0x1B, "alt": 0x12, "f4": 0x73,
+    "vol_mute": 0xAD,
+    "vol_down": 0xAE,
+    "vol_up": 0xAF,
+    "media_next": 0xB0,
+    "media_prev": 0xB1,
+    "media_stop": 0xB2,
+    "media_play": 0xB3,
+    "win": 0x5B,
+    "d": 0x44,
+    "ctrl": 0x11,
+    "v": 0x56,
+    "esc": 0x1B,
+    "alt": 0x12,
+    "f4": 0x73,
 }
 KEYEVENTF_KEYUP = 0x0002
 
@@ -48,11 +58,13 @@ def _combo(*vks):
 # ---------------- 音量 ----------------
 def _default_device():
     import comtypes
+
     try:
         comtypes.CoInitialize()
     except OSError:
         pass
     from pycaw.pycaw import AudioUtilities
+
     return AudioUtilities.GetSpeakers()
 
 
@@ -175,13 +187,12 @@ def _verify_open(exe: str, before: set, timeout: float = 2.5) -> bool:
             _last_verify.update(fg=exe_l, visible=True, new_pids=len(_running_pids(exe) - before))
             return True
         if _has_visible_window(exe):
-            _last_verify.update(
-                fg=_foreground_exe(), visible=True,
-                new_pids=len(_running_pids(exe) - before))
+            _last_verify.update(fg=_foreground_exe(), visible=True, new_pids=len(_running_pids(exe) - before))
             return True
         time.sleep(0.15)
-    _last_verify.update(fg=_foreground_exe(), visible=_has_visible_window(exe),
-                        new_pids=len(_running_pids(exe) - before))
+    _last_verify.update(
+        fg=_foreground_exe(), visible=_has_visible_window(exe), new_pids=len(_running_pids(exe) - before)
+    )
     return False
 
 
@@ -295,9 +306,13 @@ def open_app(name: str):
         if _verify_open(exe, before, timeout=1.0):
             return True, f"已打开 {name}"
     try:
-        subprocess.Popen(["cmd", "/c", "start", "", target], shell=False,
-                         stdin=subprocess.DEVNULL,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(
+            ["cmd", "/c", "start", "", target],
+            shell=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     except OSError as exc:
         return False, f"没能打开 {name}：{exc}"
     if _verify_open(exe, before):
@@ -318,8 +333,9 @@ def open_app(name: str):
     if before and _bring_to_front(exe):
         if _verify_open(exe, before, timeout=1.0):
             return True, f"已打开 {name}"
-    diag = (f"新进程 {_last_verify.get('new_pids')}，"
-            f"可见窗口 {_last_verify.get('visible')}，前台 {_last_verify.get('fg')}")
+    diag = (
+        f"新进程 {_last_verify.get('new_pids')}，可见窗口 {_last_verify.get('visible')}，前台 {_last_verify.get('fg')}"
+    )
     if before:
         return False, f"{name} 已在运行，但没能切到前台（{diag}）"
     return False, f"没能打开 {name}（{diag}）"
@@ -330,8 +346,7 @@ def close_app(name: str):
     if target is None or target.startswith("http") or target.endswith(":"):
         return False, f"我不知道怎么关闭 {name}"
     exe = target if target.lower().endswith(".exe") else target + ".exe"
-    proc = subprocess.run(["taskkill", "/IM", exe, "/F"],
-                          capture_output=True, text=True)
+    proc = subprocess.run(["taskkill", "/IM", exe, "/F"], capture_output=True, text=True)
     if proc.returncode == 0:
         return True, f"已关闭 {name}"
     return False, f"没找到正在运行的 {name}"
@@ -340,6 +355,7 @@ def close_app(name: str):
 # ---------------- 截屏 ----------------
 def screenshot():
     from PIL import ImageGrab
+
     img = None
     candidates = [
         Path.home() / "Pictures" / "Screenshots",
@@ -452,8 +468,11 @@ def _open_url(url: str, browser: str = ""):
             # 注意：Chrome 不支持 --new-tab 开关（传了只会开个空白新标签页），
             # 直接把 URL 作为参数就会在已有窗口里新开标签并跳转。
             subprocess.Popen(
-                [exe, url], shell=False,
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                [exe, url],
+                shell=False,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         except OSError:
             pass
@@ -509,13 +528,14 @@ def system_info():
     if battery is not None:
         parts.append(f"电量 {battery.percent:.0f}%")
     disk = psutil.disk_usage("C:/")
-    parts.append(f"C 盘剩余 {disk.free / 1024 ** 3:.0f} G")
+    parts.append(f"C 盘剩余 {disk.free / 1024**3:.0f} G")
     return True, "，".join(parts)
 
 
 # ---------------- 剪贴板 / 输入 ----------------
 def copy_text(text: str):
     import pyperclip
+
     if not text:
         return False, "要复制什么？"
     pyperclip.copy(text)
@@ -524,6 +544,7 @@ def copy_text(text: str):
 
 def read_clipboard():
     import pyperclip
+
     text = pyperclip.paste()
     if not text:
         return True, "剪贴板是空的"
@@ -532,6 +553,7 @@ def read_clipboard():
 
 def type_text(text: str):
     import pyperclip
+
     if not text:
         return False, "要输入什么？"
     pyperclip.copy(text)
@@ -555,8 +577,11 @@ def _launch_path(path: Path) -> bool:
         pass
     try:
         subprocess.Popen(
-            ["explorer", str(path)], shell=False,
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            ["explorer", str(path)],
+            shell=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         time.sleep(0.2)
         return True
@@ -581,8 +606,24 @@ def open_folder(name: str):
     return False, f"没权限打开{key}文件夹"
 
 
-_SUFFIXES = ("", ".txt", ".md", ".doc", ".docx", ".pdf", ".xls", ".xlsx",
-             ".ppt", ".pptx", ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mp3")
+_SUFFIXES = (
+    "",
+    ".txt",
+    ".md",
+    ".doc",
+    ".docx",
+    ".pdf",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".mp4",
+    ".mp3",
+)
 
 
 def open_item(folder: str, name: str):
@@ -620,8 +661,7 @@ def brightness(delta: int):
         "(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods)"
         ".WmiSetBrightness(1,$new);$new"
     )
-    proc = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                          capture_output=True, text=True, timeout=15)
+    proc = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True, timeout=15)
     out = (proc.stdout or "").strip()
     if proc.returncode == 0 and out:
         return True, f"亮度调到 {out}"
