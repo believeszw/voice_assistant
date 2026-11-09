@@ -24,7 +24,11 @@ import actions  # noqa: E402
 LOG = ROOT / "tools" / "demo_e2e_assistant.log"
 REPORT = ROOT / "tools" / "demo_e2e_report.txt"
 WAV_DIR = ROOT / "tools" / "demowav"
-PY = r"C:\va-venv\Scripts\python.exe"
+PY = os.environ.get("VA_PYTHON") or (
+    r"C:\va-venv\Scripts\python.exe"
+    if os.path.exists(r"C:\va-venv\Scripts\python.exe")
+    else sys.executable
+)
 
 
 def render(text: str) -> Path:

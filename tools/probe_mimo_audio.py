@@ -7,7 +7,7 @@ from pathlib import Path
 
 import requests
 
-CFG = Path(r"C:\Users\Administrator\.dsh\.credentials.yaml")
+CFG = Path.home() / ".dsh" / ".credentials.yaml"
 BASE = "https://token-plan-cn.xiaomimimo.com/v1"
 KEY = re.search(r"XIAOMI_API_KEY:\s*(\S+)", CFG.read_text(encoding="utf-8")).group(1)
 H = {"Authorization": f"Bearer {KEY}"}
