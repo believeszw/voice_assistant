@@ -425,10 +425,22 @@ def _window_titles(exe_name: str):
     return titles
 
 
+def _is_elevated() -> bool:
+    """当前进程是否是管理员权限。"""
+    try:
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
 def _open_url(url: str, browser: str = ""):
     """优先用指定浏览器打开；2.5 秒内没看到窗口变化就退系统默认浏览器（保证一定能打开）。"""
     want = browser or SEARCH_BROWSER
-    exe = _browser_exe(want)
+    # 管理员进程（高完整性）没法把 URL 交给普通权限的浏览器：Chrome 会表现为
+    # 「窗口切到前台但没有新标签」。这种情况直接走系统默认浏览器（通过 explorer 转让）。
+    if want in ("chrome", "edge") and _is_elevated():
+        want = ""
+    exe = _browser_exe(want) if want else None
     if exe:
         name = "chrome.exe" if "chrome" in exe.lower() else "msedge.exe"
         before = _window_titles(name)
@@ -451,7 +463,7 @@ def _open_url(url: str, browser: str = ""):
     # 指定浏览器没起来（提权进程/浏览器无响应等），退回“系统的默认浏览器”
     try:
         if webbrowser.open(url):
-            return True, "默认浏览器"
+            return True, "默认浏览器" + ("（管理员模式）" if _is_elevated() else "")
     except Exception:
         pass
     try:
