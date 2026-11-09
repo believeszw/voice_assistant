@@ -16,7 +16,6 @@
 import argparse
 import ctypes
 import datetime
-import re
 import sys
 import time
 import traceback
@@ -46,131 +45,16 @@ from config import (
 )
 from frontend import AudioFrontend, enhance_pcm
 from hotkey import Hotkeys
-from intents import cn2int, parse
+from intents import parse
 from logging_utils import get_logger
 from logging_utils import setup as _setup_logging
+from text_utils import is_noise, split_compound, strip_fillers, strip_lead, take_delay
 from tts import Speaker
 
 _logger = get_logger("voice_assistant")
 
+
 WAKE_ALL = tuple(dict.fromkeys(WAKE_WORDS + WAKE_WORDS_FUZZY))
-
-# 一句话里的多个指令：「打开记事本，然后调大音量」「静音，再截个屏」
-_COMPOUND_SPLIT = re.compile(r"[，,；;]\s*(?:然后|接着|再|并且|并)?|然后|接着|并且")
-
-
-_CLAUSE_PREFIX = re.compile(r"^(?:再|然后|接着|并且|并|之后)\s*")
-
-# 识别器偶尔会把环境音/口头词吐成「Yeah。」「嗯。」这类东西。它们既不是指令，
-# 也不该触发闲聊——否则一次演示会被这种噪声吃掉一轮对话额度。
-_NOISE_STRIP = re.compile(r"[\s，。,.!?！？、；;：:…~～\"'“”‘’()（）\[\]【】]+")
-_NOISE_WORDS = {
-    "yeah",
-    "yes",
-    "yep",
-    "ok",
-    "okay",
-    "hi",
-    "hello",
-    "hey",
-    "fine",
-    "thanks",
-    "thank",
-    "thankyou",
-    "you",
-    "i",
-    "嗯",
-    "啊",
-    "哦",
-    "呃",
-    "唔",
-    "诶",
-    "哎",
-    "唉",
-    "呀",
-    "哈",
-    "呵",
-    "嘿",
-    "那个",
-    "这个",
-    "好的",
-}
-
-
-def _is_noise(text: str) -> bool:
-    """判断识别结果是不是「非指令的噪声」：纯标点、单字、口头词。"""
-    t = _NOISE_STRIP.sub("", text or "").strip().lower()
-    if len(t) <= 1:
-        return True
-    return t in _NOISE_WORDS
-
-
-# 口语句首的填充词：「嗯，帮我打开记事本」「那个，现在几点了」
-_FILLER_PREFIX = re.compile(
-    r"^(?:(?:嗯|呃|啊|哦|诶|哎|唉|唔|那个|这个|就是|然后|喂|你好|您好|"
-    r"小朋友|小助手|在吗|请|麻烦|帮我)\s*[，,。.！!？?、]?\s*)+"
-)
-
-
-def _strip_fillers(text: str) -> str:
-    """去掉句首口头词/连接词，返回真正像指令的部分。"""
-    prev = None
-    t = (text or "").strip()
-    while prev != t:
-        prev = t
-        t = _FILLER_PREFIX.sub("", t).strip("，,。.！!？?、 ")
-    return t
-
-
-# 子句开头常被 ASR 带上来的口水话/代词：「的话，你打开记事本」「你帮我…」
-_LEAD_NOISE = re.compile(
-    r"^(?:(?:的话|那么|那个|这个|就是|然后|所以|但是|不过|你|您|我|我们|咱们|"
-    r"帮我|请|麻烦|先|就)\s*[，,。.！!？?、]?\s*)+"
-)
-
-
-def _strip_lead(text: str) -> str:
-    """去掉子句开头的「的话，你」这类残留，便于规则解析。"""
-    t = (text or "").strip()
-    prev = None
-    while prev != t:
-        prev = t
-        t = _LEAD_NOISE.sub("", t).strip("，,。.！!？?、 ")
-    return t
-
-
-# 复合指令里的「等2秒钟之后」——演示里会拿它验证按序执行
-_DELAY_RE = re.compile(
-    r"^(?:等|等待|过|停)\s*([0-9零一二两三四五六七八九十百]+)\s*"
-    r"(秒钟|秒|分钟|分)\s*(?:之后|以后|后)?\s*[，,。.]?\s*"
-)
-
-
-def _take_delay(text: str):
-    """取出开头的等待时间，返回 (秒数或 0, 剩余文本)。"""
-    m = _DELAY_RE.match(text or "")
-    if not m:
-        return 0.0, text
-    value = cn2int(m.group(1))
-    if value is None:
-        return 0.0, text
-    unit = 60 if "分" in m.group(2) else 1
-    return float(value * unit), text[m.end() :].strip()
-
-
-def split_compound(text: str):
-    """把复合指令拆成子句；不足两句返回空列表（走单指令逻辑）。
-
-    拆分后剥掉开头连接词（「再/然后/接着/并且」），这样第二句可以是
-    「再调到百分之五十」这种省略主语的补充指令。
-    """
-    raw = [p.strip("，,；; 。.!！?？、") for p in _COMPOUND_SPLIT.split(text or "")]
-    parts = []
-    for p in raw:
-        p = _CLAUSE_PREFIX.sub("", p).strip()
-        if p:
-            parts.append(p)
-    return parts if len(parts) > 1 else []
 
 
 HELP = (
@@ -397,7 +281,7 @@ class Assistant:
     def handle(self, text: str, history=None):
         """返回 (回复文本, 是否退出)。支持一句话多个指令。"""
         history = history or []
-        text = _strip_fillers(text or "")
+        text = strip_fillers(text or "")
         if not text:
             return "嗯，我在。", False
         # 只有唤醒词/问候（「你好，小助手」）当作打招呼，不要报「没听懂」
@@ -406,10 +290,10 @@ class Assistant:
         parts = split_compound(text)
         cleaned = []
         for p in parts:
-            p = _strip_fillers(self._strip_wake(p))
-            lead = _strip_lead(p)
+            p = strip_fillers(self._strip_wake(p))
+            lead = strip_lead(p)
             p = lead or p
-            if p and not _is_noise(p):
+            if p and not is_noise(p):
                 cleaned.append(p)
         if len(cleaned) >= 2:
             parts = cleaned
@@ -419,7 +303,7 @@ class Assistant:
             intents = []
             fixed = []
             for p in parts:
-                cand = _strip_lead(p)
+                cand = strip_lead(p)
                 it = parse(cand)
                 if it.get("action") in (None, "unknown") and cand != p:
                     it = parse(p)
@@ -432,11 +316,11 @@ class Assistant:
                 replies = []
                 should_exit = False
                 for part, intent, ok in zip(parts, intents, known, strict=False):
-                    delay, part = _take_delay(part)
+                    delay, part = take_delay(part)
                     if delay:
                         self.log(f"[等待] {delay:g} 秒")
                         time.sleep(min(delay, 5.0))
-                        part = _strip_fillers(part)
+                        part = strip_fillers(part)
                         if not part:
                             continue
                         intent = parse(part)
@@ -454,7 +338,7 @@ class Assistant:
                 return "；".join(replies), should_exit
         intent = parse(text)
         if intent.get("action") == "unknown":
-            lead = _strip_lead(text)
+            lead = strip_lead(text)
             if lead != text:
                 alt = parse(lead)
                 if alt.get("action") not in (None, "unknown"):
@@ -725,7 +609,7 @@ class Assistant:
                     last_wake = now
                     self.log(f"唤醒词命中: {text!r}")
                     rest = self._strip_wake(text)
-                    if _is_noise(rest):
+                    if is_noise(rest):
                         # 模糊唤醒词带出的单个字（「你好小姐」→「姐」）不是指令
                         rest = ""
                     self._enter_session(mic, stream, rest)
@@ -760,7 +644,7 @@ class Assistant:
         rest = text or ""
         for w in sorted(WAKE_ALL, key=len, reverse=True):
             rest = rest.replace(w, "")
-        rest = _strip_fillers(rest).strip("，。,.!?！？、 　")
+        rest = strip_fillers(rest).strip("，。,.!?！？、 　")
         if not rest or len(rest) <= 1:
             return ""
         # 两三个字的残渣，如果规则也解析不出动作，就按残留噪声处理
@@ -851,7 +735,7 @@ class Assistant:
             if rounds > SESSION_MAX_TURNS * 2:  # 防止被连续打断时无限循环
                 break
             pre = self._take_pre_roll()
-            if turn == 0 and initial_text and not _is_noise(initial_text):
+            if turn == 0 and initial_text and not is_noise(initial_text):
                 text, engine, secs = initial_text, "wake", 0.0
             else:
                 got = self._listen_once(mic, turn, pre)
@@ -865,7 +749,7 @@ class Assistant:
                 self.say("没听清，再说一次。")
                 turn += 1
                 continue
-            if _is_noise(text):
+            if is_noise(text):
                 # 「Yeah。」「嗯。」这类不是指令：不回复、不占对话轮次
                 self.log(f"[噪声] 忽略: {text!r}")
                 continue

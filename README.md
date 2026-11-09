@@ -114,6 +114,7 @@ tools\run_regress.bat                  # 本机声学/端到端回归（AEC、�
 | `aec3.py` | WebRTC AEC3 的 ctypes 绑定（首选 AEC 引擎，10 ms 帧） |
 | `aec_nlms.py` | 轻量 AEC 兜底：延迟锁定 + 最小二乘增益 + 双讲检测 |
 | `intents.py` | 规则意图解析（快、离线可用） |
+| `text_utils.py` | 纯文本工具：噪声过滤、口头词剥离、复合指令拆分、等待时间解析（不依赖音频，可独立单测） |
 | `actions.py` | 具体电脑操作（音量、应用、截屏、剪贴板、系统操作……） |
 | `hotkey.py` | 全局热键 |
 | `kws.py` | 本地唤醒词：sherpa-onnx 专用 KWS 模型 |

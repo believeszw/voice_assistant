@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import assistant as A  # noqa: E402
 from frontend import AudioFrontend  # noqa: E402
+from text_utils import is_noise  # noqa: E402
 
 ok = True
 
@@ -37,11 +38,11 @@ check("strip_wake('你好小助手') 应为空", rest(inst, "你好小助手") =
 check("strip_wake('小助手，现在几点了') 应保留指令",
       rest(inst, "小助手，现在几点了") == "现在几点了",
       repr(rest(inst, "小助手，现在几点了")))
-check("_is_noise('姐') 应为噪声", A._is_noise("姐"))
-check("_is_noise('Yeah。') 应为噪声", A._is_noise("Yeah。"))
-check("_is_noise('嗯。') 应为噪声", A._is_noise("嗯。"))
-check("_is_noise('打开记事本') 不是噪声", not A._is_noise("打开记事本"))
-check("_is_noise('') 视为噪声", A._is_noise(""))
+check("_is_noise('姐') 应为噪声", is_noise("姐"))
+check("_is_noise('Yeah。') 应为噪声", is_noise("Yeah。"))
+check("_is_noise('嗯。') 应为噪声", is_noise("嗯。"))
+check("_is_noise('打开记事本') 不是噪声", not is_noise("打开记事本"))
+check("_is_noise('') 视为噪声", is_noise(""))
 
 # ---------- 3a) 误打断：播报尾音（暂停后前 150ms）不算确认 ----------
 class FakeMic:
