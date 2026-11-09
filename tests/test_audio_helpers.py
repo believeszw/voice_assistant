@@ -6,7 +6,6 @@ CI 用 `-m "not audio"` 即可避开。
 
 import sys
 
-import numpy as np
 import pytest
 
 pytestmark = [
@@ -14,7 +13,9 @@ pytestmark = [
     pytest.mark.skipif(sys.platform != "win32", reason="仅 Windows"),
 ]
 
+# CI 只装 requirements-dev（pytest/ruff），运行依赖按需跳过，不阻塞收集
 assistant = pytest.importorskip("assistant")
+np = pytest.importorskip("numpy")
 _take_delay = assistant._take_delay
 _strip_fillers = assistant._strip_fillers
 _strip_lead = assistant._strip_lead
